@@ -84,7 +84,7 @@ def history_probabilities(revisions: List[Revision], history: List[TestResult]) 
     print(params)
     zs = [z_value(params, i) for i in range(0, len(revisions) - 1)]
     ps = [z_to_p(z) for z in zs]
-    p_complements = [1 - p for p in zs]
+    p_complements = [1 - p for p in ps]
     total_p_complement = sum(p_complements)
     # The above ps are "p-values" -- P(A!=B|r).  For reasons described in other documents, an application of Bayes' theorem tells us that P(r|A!=B)
     # is simply the normalization of these probabilities.
