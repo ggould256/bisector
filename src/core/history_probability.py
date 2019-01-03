@@ -58,23 +58,22 @@ class HistoryParameters:
         return s
 
 
-def z_value(history_parameters: HistoryParameters, revision_index: int):
+def p_value(history_parameters: HistoryParameters, revision_index: int):
     """Compute a Z statistic against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index are from the same distribution."""
     hypothesis_p = history_parameters.success_count / history_parameters.count
     left_n = history_parameters.left_sum_counts[revision_index]
+    left_successes = history_parameters.left_sum_successes[revision_index]
     left_p = history_parameters.left_sum_successes[revision_index] / left_n
     right_n = history_parameters.right_sum_counts[revision_index + 1]
+    right_successes = history_parameters.right_sum_successes[revision_index + 1]
     right_p = history_parameters.right_sum_successes[revision_index + 1] / right_n
-    # I don't know where I found the below formula; I haven't checked it and it might be wrong.
-    z = -abs(left_p - right_p) / sqrt(hypothesis_p * (1 - hypothesis_p) * (1 / left_n + 1 / right_n))
-    print("z computation for idx", revision_index, ":", hypothesis_p, left_n, left_p, right_n, right_p, z)
-    return z
 
-
-def z_to_p(z: float):
-    single_tailed = scipy.stats.norm.cdf(z)
-    double_tailed = 2 * single_tailed  # Z-distribution is symmetric.
-    return double_tailed
+    hypothesis_left = scipy.stats.binom(left_n, hypothesis_p)
+    p_left = hypothesis_left.cdf(left_successes) if left_p > hypothesis_p else (1 - hypothesis_left.cdf(left_successes))
+    hypothesis_right = scipy.stats.binom(right_n, hypothesis_p)
+    p_right = hypothesis_right.cdf(right_successes) if right_p > hypothesis_p else (1 - hypothesis_right.cdf(right_successes))
+    p = 1 / (1 / p_left + 1 / p_right)
+    return p
 
 
 def history_probabilities(revisions: List[Revision], history: List[TestResult]) -> List[float]:
@@ -82,13 +81,15 @@ def history_probabilities(revisions: List[Revision], history: List[TestResult]) 
     The last revision has no well-defined probability and is omitted."""
     params = HistoryParameters(revisions, history)
     print(params)
-    zs = [z_value(params, i) for i in range(0, len(revisions) - 1)]
-    ps = [z_to_p(z) for z in zs]
+    ps = [p_value(params, i) for i in range(0, len(revisions) - 1)]
+    total_ps = sum(ps)
+
     p_complements = [1 - p for p in ps]
     total_p_complement = sum(p_complements)
     # The above ps are "p-values" -- P(A!=B|r).  For reasons described in other documents, an application of Bayes' theorem tells us that P(r|A!=B)
     # is simply the normalization of these probabilities.
-    revision_probabilities = [pc / total_p_complement for pc in p_complements]
+    #revision_probabilities = [pc / total_p_complement for pc in p_complements]
+    revision_probabilities = [p / total_ps for p in ps]
     return revision_probabilities
 
 

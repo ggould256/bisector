@@ -23,6 +23,10 @@ class TestParameterComputation(unittest.TestCase):
         self.assertEqual(params.right_sum_failures, [3, 1, 0])
         self.assertEqual(params.right_sum_counts, [6, 4, 2])
 
+    def test_p_formula(self):
+        """Test that I have something like the correct formula for p values."""
+        
+
     def test_probabilities(self):
         revisions = ['a', 'b', 'c']
         history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
