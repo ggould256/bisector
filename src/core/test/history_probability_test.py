@@ -1,4 +1,4 @@
-from core.history_probability import Guess, HistoryParameters, history_probabilities
+from core.history_probability import Guess, HistoryParameters, history_probabilities, p_value
 
 import random
 import unittest
@@ -24,8 +24,14 @@ class TestParameterComputation(unittest.TestCase):
         self.assertEqual(params.right_sum_counts, [6, 4, 2])
 
     def test_p_formula(self):
-        """Test that I have something like the correct formula for p values."""
-        
+        """Sanity-check that I have something like the correct formula for p values."""
+        revisions = ['a', 'b', 'c']
+        history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
+        params = HistoryParameters(revisions, history)
+        assert p_value(params, 0) == p_value(params, 1)
+        doubled_params = HistoryParameters(revisions, history * 2)
+        assert p_value(doubled_params, 0) == p_value(doubled_params, 1)
+        assert p_value(params, 0) > p_value(doubled_params, 0)
 
     def test_probabilities(self):
         revisions = ['a', 'b', 'c']

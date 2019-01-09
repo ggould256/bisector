@@ -59,20 +59,16 @@ class HistoryParameters:
 
 
 def p_value(history_parameters: HistoryParameters, revision_index: int):
-    """Compute a Z statistic against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index are from the same distribution."""
+    """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index are from the same distribution."""
     hypothesis_p = history_parameters.success_count / history_parameters.count
     left_n = history_parameters.left_sum_counts[revision_index]
     left_successes = history_parameters.left_sum_successes[revision_index]
-    left_p = history_parameters.left_sum_successes[revision_index] / left_n
     right_n = history_parameters.right_sum_counts[revision_index + 1]
     right_successes = history_parameters.right_sum_successes[revision_index + 1]
-    right_p = history_parameters.right_sum_successes[revision_index + 1] / right_n
 
-    hypothesis_left = scipy.stats.binom(left_n, hypothesis_p)
-    p_left = hypothesis_left.cdf(left_successes) if left_p > hypothesis_p else (1 - hypothesis_left.cdf(left_successes))
-    hypothesis_right = scipy.stats.binom(right_n, hypothesis_p)
-    p_right = hypothesis_right.cdf(right_successes) if right_p > hypothesis_p else (1 - hypothesis_right.cdf(right_successes))
-    p = 1 / (1 / p_left + 1 / p_right)
+    p_left = scipy.stats.binom_test(left_successes, left_n, hypothesis_p, alternative='two-sided')
+    p_right = scipy.stats.binom_test(right_successes, right_n, hypothesis_p, alternative='two-sided')
+    p = 1 / (1 / p_left + 1 / p_right)  # Combine p-values via harmonic sum; TODO(ggould) is this correct?
     return p
 
 
