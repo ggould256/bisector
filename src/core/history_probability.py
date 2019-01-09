@@ -76,16 +76,15 @@ def history_probabilities(revisions: List[Revision], history: List[TestResult]) 
     """Given a list of revisions and tests against those revisions, compute the likelihood that each revision is the last one before a change in success probability.
     The last revision has no well-defined probability and is omitted."""
     params = HistoryParameters(revisions, history)
-    print(params)
     ps = [p_value(params, i) for i in range(0, len(revisions) - 1)]
     total_ps = sum(ps)
 
     p_complements = [1 - p for p in ps]
     total_p_complement = sum(p_complements)
-    # The above ps are "p-values" -- P(A!=B|r).  For reasons described in other documents, an application of Bayes' theorem tells us that P(r|A!=B)
-    # is simply the normalization of these probabilities.
+    # The above ps are "p-values" -- P(A==B|r).  For reasons described in other documents, an application of Bayes' theorem tells us that P(r|A!=B)
+    # is simply the normalization of the complement of these probabilities.
     #revision_probabilities = [pc / total_p_complement for pc in p_complements]
-    revision_probabilities = [p / total_ps for p in ps]
+    revision_probabilities = [p_complement / total_p_complement for p_complement in p_complements]
     return revision_probabilities
 
 

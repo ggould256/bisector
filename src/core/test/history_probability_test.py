@@ -23,15 +23,27 @@ class TestParameterComputation(unittest.TestCase):
         self.assertEqual(params.right_sum_failures, [3, 1, 0])
         self.assertEqual(params.right_sum_counts, [6, 4, 2])
 
-    def test_p_formula(self):
+    def test_p_formula_struture(self):
         """Sanity-check that I have something like the correct formula for p values."""
         revisions = ['a', 'b', 'c']
         history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
         params = HistoryParameters(revisions, history)
-        assert p_value(params, 0) == p_value(params, 1)
+        assert p_value(params, 0) == p_value(params, 1)  # Scenario is symmetric
         doubled_params = HistoryParameters(revisions, history * 2)
-        assert p_value(doubled_params, 0) == p_value(doubled_params, 1)
-        assert p_value(params, 0) > p_value(doubled_params, 0)
+        assert p_value(doubled_params, 0) == p_value(doubled_params, 1)  # Still symmetric...
+        assert p_value(params, 0) > p_value(doubled_params, 0)  # ...but increasingly unlikely
+
+    def test_p_formula_behaviour(self):
+        """Sanity-check that the p formula works as expected on compliant data."""
+        revisions = ['a', 'b', 'c']  # 'b' will be the right answer.
+        history = [('a', False), ('b', False), ('c', True), ]
+        ps = (1, 1)
+        for i in range(5):
+            params = HistoryParameters(revisions, history)
+            new_ps = (p_value(params, 0), p_value(params, 1))
+            assert (new_ps[0] / new_ps[1]) > (ps[0] / ps[1])
+            ps = new_ps
+            history *= 2
 
     def test_probabilities(self):
         revisions = ['a', 'b', 'c']
@@ -42,20 +54,21 @@ class TestParameterComputation(unittest.TestCase):
         history.append(('b', True)) # Tip the probability of 'b' up.
         self.assertLess(history_probabilities(revisions, history)[0], 0.5)
         history *= 5  # Lots more history should make us more certain.
-        self.assertLess(history_probabilities(revisions, history)[0], 0.01)
+        self.assertLess(history_probabilities(revisions, history)[0], 0.05)
 
     def test_guessing(self):
         random.seed(1)
         revisions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']  # The right answer will be 'f'.
         history = []
         iterations = 0
-        while iterations < 2000:
+        while iterations < 200:
             iterations += 1
             for idx in range(0, 6):
                 history += [(revisions[idx], random.random() < 0.4)]
             for idx in range(6, 8):
                 history += [(revisions[idx], random.random() < 0.6)]
             guess = Guess(revisions, history)
+            print(HistoryParameters(revisions, history))
             print("with", guess.guess_probability, "it was revision", guess.best_revision, ".")
             if guess.guess_probability > 0.95:
                 break
