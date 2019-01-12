@@ -9,7 +9,7 @@ class TestParameterComputation(unittest.TestCase):
     def test_params(self):
         """Test computation of population parameters from history."""
         revisions = ['a', 'b', 'c']
-        history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
+        history = [('a', False, 1), ('a', False, 1), ('b', True, 1), ('b', False, 1), ('c', True, 1), ('c', True, 1), ]
         params = HistoryParameters(revisions, history)
         self.assertEqual(params.success_counts, [0, 1, 2])
         self.assertEqual(params.failure_counts, [2, 1, 0])
@@ -27,7 +27,7 @@ class TestParameterComputation(unittest.TestCase):
     def test_p_formula_struture(self):
         """Sanity-check that I have something like the correct formula for p values."""
         revisions = ['a', 'b', 'c']
-        history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
+        history = [('a', False, 1), ('a', False, 1), ('b', True, 1), ('b', False, 1), ('c', True, 1), ('c', True, 1), ]
         params = HistoryParameters(revisions, history)
         assert p_value(params, 0) == p_value(params, 1)  # Scenario is symmetric
         doubled_params = HistoryParameters(revisions, history * 2)
@@ -37,7 +37,7 @@ class TestParameterComputation(unittest.TestCase):
     def test_p_formula_behaviour(self):
         """Sanity-check that the p formula works as expected on compliant data."""
         revisions = ['a', 'b', 'c']  # 'b' will be the right answer.
-        history = [('a', False), ('b', False), ('c', True), ]
+        history = [('a', False, 1), ('b', False, 1), ('c', True, 1), ]
         ps = (1, 1)
         for i in range(5):
             params = HistoryParameters(revisions, history)
@@ -49,15 +49,15 @@ class TestParameterComputation(unittest.TestCase):
     def test_probabilities(self):
         """Test that revision probability computation works as expected."""
         revisions = ['a', 'b', 'c']
-        history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
+        history = [('a', False, 1), ('a', False, 1), ('b', True, 1), ('b', False, 1), ('c', True, 1), ('c', True, 1), ]
         self.assertEqual(history_probabilities(revisions, history), [0.5, 0.5])
         history += history  # Doubling the number of tests does not break the symmetry
         self.assertEqual(history_probabilities(revisions, history), [0.5, 0.5])
-        history.append(('b', True)) # Tip the success probability of 'b' up.
+        history.append(('b', True, 1)) # Tip the success probability of 'b' up.
         # 'b' now more closely resembles 'c' than 'a', so ps[0] > ps[1]
         self.assertGreater(history_probabilities(revisions, history)[0], 0.5)
         self.assertLess(history_probabilities(revisions, history)[1], 0.5)
-        history += [('b', True)] * 5  # Lots more history should make us more certain.
+        history += [('b', True, 1)] * 5  # Lots more history should make us more certain.
         self.assertGreater(history_probabilities(revisions, history)[0], 0.9)
 
     def test_guessing(self):
@@ -69,14 +69,14 @@ class TestParameterComputation(unittest.TestCase):
         while iterations < 100:
             iterations += 1
             for idx in range(0, 6):
-                history += [(revisions[idx], random.random() < 0.4)]
+                history += [(revisions[idx], random.random() < 0.4, 1)]
             for idx in range(6, 8):
-                history += [(revisions[idx], random.random() < 0.6)]
+                history += [(revisions[idx], random.random() < 0.6, 1)]
             guess = Guess(revisions, history)
             if guess.guess_probability > 0.95:
                 break
         else:
-            self.assertTrue(False)
+            self.assertTrue, 1(False, 1)
         assert guess.best_revision == 'f'
 
 

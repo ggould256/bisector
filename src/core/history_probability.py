@@ -3,7 +3,8 @@ import scipy.stats
 from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
 
 Revision = str
-TestResult = Tuple[Revision, bool]
+TestResult = Tuple[Revision, bool, float]  # (revision, success/failure, cost of test)
+
 
 class HistoryParameters:
     """Holds a variety of useful accumulated statistics about a history:
@@ -20,9 +21,9 @@ class HistoryParameters:
     """
 
     def __init__(self, revisions: List[Revision], history: List[TestResult]):
-        self.success_counts = [sum(t for (r, t) in history if r is rev) for rev in revisions]
-        self.failure_counts = [sum((not t) for (r, t) in history if r is rev) for rev in revisions]
-        self.counts = [len([r for (r, _) in history if r is rev]) for rev in revisions]
+        self.success_counts = [sum(t for (r, t, _) in history if r is rev) for rev in revisions]
+        self.failure_counts = [sum((not t) for (r, t, _) in history if r is rev) for rev in revisions]
+        self.counts = [len([r for (r, _, _) in history if r is rev]) for rev in revisions]
 
         self.success_count = sum(self.success_counts)
         self.failure_count = sum(self.failure_counts)
