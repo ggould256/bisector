@@ -7,6 +7,7 @@ import unittest
 class TestParameterComputation(unittest.TestCase):
 
     def test_params(self):
+        """Test computation of population parameters from history."""
         revisions = ['a', 'b', 'c']
         history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
         params = HistoryParameters(revisions, history)
@@ -46,34 +47,37 @@ class TestParameterComputation(unittest.TestCase):
             history *= 2
 
     def test_probabilities(self):
+        """Test that revision probability computation works as expected."""
         revisions = ['a', 'b', 'c']
         history = [('a', False), ('a', False), ('b', True), ('b', False), ('c', True), ('c', True), ]
         self.assertEqual(history_probabilities(revisions, history), [0.5, 0.5])
         history += history  # Doubling the number of tests does not break the symmetry
         self.assertEqual(history_probabilities(revisions, history), [0.5, 0.5])
-        history.append(('b', True)) # Tip the probability of 'b' up.
-        self.assertLess(history_probabilities(revisions, history)[0], 0.5)
-        history *= 5  # Lots more history should make us more certain.
-        self.assertLess(history_probabilities(revisions, history)[0], 0.05)
+        history.append(('b', True)) # Tip the success probability of 'b' up.
+        # 'b' now more closely resembles 'c' than 'a', so ps[0] > ps[1]
+        self.assertGreater(history_probabilities(revisions, history)[0], 0.5)
+        self.assertLess(history_probabilities(revisions, history)[1], 0.5)
+        history += [('b', True)] * 5  # Lots more history should make us more certain.
+        self.assertGreater(history_probabilities(revisions, history)[0], 0.9)
 
     def test_guessing(self):
+        """Actually make a guess on difficult random data."""
         random.seed(1)
         revisions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']  # The right answer will be 'f'.
         history = []
         iterations = 0
-        while iterations < 200:
+        while iterations < 100:
             iterations += 1
             for idx in range(0, 6):
                 history += [(revisions[idx], random.random() < 0.4)]
             for idx in range(6, 8):
                 history += [(revisions[idx], random.random() < 0.6)]
             guess = Guess(revisions, history)
-            print(HistoryParameters(revisions, history))
-            print("with", guess.guess_probability, "it was revision", guess.best_revision, ".")
             if guess.guess_probability > 0.95:
                 break
         else:
             self.assertTrue(False)
+        assert guess.best_revision == 'f'
 
 
 if __name__ == '__main__':

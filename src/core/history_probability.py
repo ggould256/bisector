@@ -59,7 +59,8 @@ class HistoryParameters:
 
 
 def p_value(history_parameters: HistoryParameters, revision_index: int):
-    """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index are from the same distribution."""
+    """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index
+    are from the same distribution."""
     hypothesis_p = history_parameters.success_count / history_parameters.count
     left_n = history_parameters.left_sum_counts[revision_index]
     left_successes = history_parameters.left_sum_successes[revision_index]
@@ -73,18 +74,19 @@ def p_value(history_parameters: HistoryParameters, revision_index: int):
 
 
 def history_probabilities(revisions: List[Revision], history: List[TestResult]) -> List[float]:
-    """Given a list of revisions and tests against those revisions, compute the likelihood that each revision is the last one before a change in success probability.
-    The last revision has no well-defined probability and is omitted."""
+    """Given a list of revisions and tests against those revisions, compute the likelihood that each revision is the
+    last one before a change in success probability.  The last revision has no well-defined probability and is
+    omitted."""
     params = HistoryParameters(revisions, history)
-    ps = [p_value(params, i) for i in range(0, len(revisions) - 1)]
-    total_ps = sum(ps)
 
-    p_complements = [1 - p for p in ps]
-    total_p_complement = sum(p_complements)
-    # The above ps are "p-values" -- P(A==B|r).  For reasons described in other documents, an application of Bayes' theorem tells us that P(r|A!=B)
-    # is simply the normalization of the complement of these probabilities.
-    #revision_probabilities = [pc / total_p_complement for pc in p_complements]
-    revision_probabilities = [p_complement / total_p_complement for p_complement in p_complements]
+    ps = [p_value(params, i) for i in range(0, len(revisions) - 1)]
+
+    # The above ps are "p-values" -- P(A==B|r).  For reasons described in other documents, an application of Bayes'
+    # theorem tells us that P(r|A!=B) is simply the normalization of the complement of these probabilities.
+    weights = [1 / p for p in ps]
+    total_weight = sum(weights)
+    revision_probabilities = [weight / total_weight for weight in weights]
+
     return revision_probabilities
 
 
@@ -92,6 +94,5 @@ class Guess:
     """A structure representing a best-guess estimate of the critical revision and its likelihood."""
     def __init__(self, revisions: List[Revision], history: List[TestResult]):
         probabilities = history_probabilities(revisions, history)
-        print(probabilities)
         (self.best_revision_index, self.guess_probability) = max(enumerate(probabilities), key=lambda x: x[1])
         self.best_revision = revisions[self.best_revision_index]
