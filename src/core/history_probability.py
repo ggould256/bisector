@@ -4,6 +4,7 @@ from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
 
 Revision = str
 TestResult = Tuple[Revision, bool, float]  # (revision, success/failure, cost of test)
+History = List[TestResult]
 
 
 class HistoryParameters:
@@ -20,7 +21,7 @@ class HistoryParameters:
         right_sum_failures  For each revision, the number of failures at that or any subsequent revision
     """
 
-    def __init__(self, revisions: List[Revision], history: List[TestResult]):
+    def __init__(self, revisions: List[Revision], history: History):
         self.success_counts = [sum(t for (r, t, _) in history if r is rev) for rev in revisions]
         self.failure_counts = [sum((not t) for (r, t, _) in history if r is rev) for rev in revisions]
         self.counts = [len([r for (r, _, _) in history if r is rev]) for rev in revisions]
@@ -74,7 +75,7 @@ def p_value(history_parameters: HistoryParameters, revision_index: int):
     return p
 
 
-def history_probabilities(revisions: List[Revision], history: List[TestResult]) -> List[float]:
+def history_probabilities(revisions: List[Revision], history: History) -> List[float]:
     """Given a list of revisions and tests against those revisions, compute the likelihood that each revision is the
     last one before a change in success probability.  The last revision has no well-defined probability and is
     omitted."""
@@ -93,7 +94,7 @@ def history_probabilities(revisions: List[Revision], history: List[TestResult]) 
 
 class Guess:
     """A structure representing a best-guess estimate of the critical revision and its likelihood."""
-    def __init__(self, revisions: List[Revision], history: List[TestResult]):
+    def __init__(self, revisions: List[Revision], history: History):
         probabilities = history_probabilities(revisions, history)
         (self.best_revision_index, self.guess_probability) = max(enumerate(probabilities), key=lambda x: x[1])
         self.best_revision = revisions[self.best_revision_index]
