@@ -17,7 +17,7 @@ class SearchProblem(Generic[VersionType]):
                  known_test_cost: float=None):
 
         """Create a SearchProblem that will search over @p versions looking for
-        changes in the frequency with which @p test_fn passes.
+        a change in the frequency with which @p test_fn passes.
 
         There are also a large number of optional keyword arguments.
 
@@ -26,7 +26,7 @@ class SearchProblem(Generic[VersionType]):
         of the code.
 
         If @p current_version is set, @p setup_fn will not be called before
-        calls to `test_fn(current_version)`.
+        an initial call to `test_fn(current_version)`.
 
         @p known_initial_success_probability and @p
         known_final_success_probability allow you to specify that you know the
