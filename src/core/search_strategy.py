@@ -2,7 +2,11 @@
 strategy provided is deliberately ineffecient; it provides a simple baseline
 to prove the concept."""
 
-import search_problem
+import math
+import time
+
+from core.search_problem import SearchProblem
+from core.history_probability import Guess
 
 class StrategyRunner:
     """Actually runs a strategy on a search problem.  Its ctor acts as the
@@ -13,11 +17,58 @@ class StrategyRunner:
         factory arguments to instantiate the strategy."""
         self._strategy = DefaultSearchStrategy()
 
-    def solve(problem: search_problem.SearchProblem):
-        # XXX TODO(ggould) implement
-        pass
+    def solve(self, problem: SearchProblem):
+        history = []
+        guess = Guess(problem.versions, history)
+        target_probability = 0.9  # TODO parameterize this (in the problem?)
+        setup_cost = problem.known_setup_cost
+        test_cost = problem.known_test_cost
+        assert (guess.guess_probability <= (1 / (len(problem.versions) - 1)))
+        while guess.guess_probability < target_probability:
+            next_revision = self._strategy.next_revision(
+                history, problem, setup_cost, test_cost)
+            if problem.current_version != next_revision:
+                _, setup_cost = self.updated_cost(
+                    problem.known_setup_cost, setup_cost, history,
+                    lambda: problem.setup_fn(next_revision))
+            result, test_cost = self.updated_cost(
+                problem.known_test_cost, test_cost, history,
+                lambda: problem.test_fn(next_revision))
+            history += [(next_revision, result, test_cost)]
+            guess = Guess(problem.versions, history)
+        return guess
+
+    @staticmethod
+    def updated_cost(known_prior, estimated_prior, history, fn):
+        """Evalueate fn(); return its result and the best estimate of its
+        cost."""
+        # TODO There really are lots of kinds of cost and time is only one.
+        start = time.perf_counter()
+        result = fn()
+        duration = time.perf_counter() - start
+        if known_prior:
+            return result, known_prior
+        if estimated_prior is None:
+            return result, duration
+        return (result,
+            (estimated_prior * len(history) + duration) / (len(history) + 1))
 
 
-class DefaultSearchStrategy
-    # XXX TODO(ggould) implement
-    pass
+class DefaultSearchStrategy:
+    """Extremely basic strategy that blindly tests each revision a few times 
+    (setup_cost / test_cost many times) without regard for probabilities.
+    Pretty much just meant to establish a baseline for testing."""
+
+    def next_revision(self, history, problem, setup_cost, test_cost):
+        if not history:
+            return problem.current_version or problem.versions[0]
+        cost_ratio = (1 if setup_cost is None or test_cost is None
+                      else math.ceil(setup_cost / test_cost))
+        revision_counts = [sum(1 for h in history if h[0] == r)
+                           for r in problem.versions]
+        min_val, min_idx = min((val, idx)
+                               for (idx, val) in enumerate(revision_counts))
+        max_val = max(revision_counts)
+        if problem.current_version is None or max_val - min_val > cost_ratio:
+            return problem.versions[min_idx]
+        else: return problem.current_version

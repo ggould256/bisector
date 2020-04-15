@@ -6,7 +6,7 @@ class SearchProblem(Generic[VersionType]):
     """A SearchProblem describes a bisection problem that we can attempt to
     solve."""
 
-    def __init__(self,
+    def __init__(self, *,
                  versions: Iterable[VersionType],
                  test_fn: Callable[[VersionType], bool],
                  setup_fn: Callable[[VersionType], None]=None,

@@ -22,6 +22,7 @@ class HistoryParameters:
     """
 
     def __init__(self, revisions: List[Revision], history: History):
+        assert len(revisions)
         self.success_counts = [sum(t for (r, t, _) in history if r is rev) for rev in revisions]
         self.failure_counts = [sum((not t) for (r, t, _) in history if r is rev) for rev in revisions]
         self.counts = [len([r for (r, _, _) in history if r is rev]) for rev in revisions]
@@ -63,6 +64,8 @@ class HistoryParameters:
 def p_value(history_parameters: HistoryParameters, revision_index: int):
     """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index
     are from the same distribution."""
+    if history_parameters.count == 0:
+        return 1.
     hypothesis_p = history_parameters.success_count / history_parameters.count
     left_n = history_parameters.left_sum_counts[revision_index]
     left_successes = history_parameters.left_sum_successes[revision_index]
@@ -71,6 +74,8 @@ def p_value(history_parameters: HistoryParameters, revision_index: int):
 
     p_left = scipy.stats.binom_test(left_successes, left_n, hypothesis_p, alternative='two-sided')
     p_right = scipy.stats.binom_test(right_successes, right_n, hypothesis_p, alternative='two-sided')
+    if p_left == 0 or p_right == 0:
+        return 0.
     p = 1 / (1 / p_left + 1 / p_right)  # Combine p-values via harmonic sum; TODO(ggould) is this correct?
     return p
 
