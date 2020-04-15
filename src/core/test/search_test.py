@@ -11,9 +11,9 @@ class TestSearch(unittest.TestCase):
 
     def _test_fn(self, revision):
         """Test passed 60% of the time before revision 'c', 40% after."""
-        self.counter = (self.counter + 1) % 10
-        return self.counter < 6 if revision < 'c' else self.counter < 4
-
+        self.counter += 1
+        success_prob = 0.6 if revision < 'c' else 0.4
+        return (self.counter * 137 % 100) > (100 * success_prob)
 
     def test_basic(self):
         problem = SearchProblem(
@@ -24,6 +24,9 @@ class TestSearch(unittest.TestCase):
         guess = StrategyRunner().solve(problem)
         self.assertEqual(guess.best_revision, 'b')
         self.assertGreater(guess.guess_probability, 0.9)
+        # The basic strategy wastes a lot of work, but should still be able
+        # to do its job in a few hundred tests.
+        self.assertLess(self.counter, 400)
 
 
 if __name__ == '__main__':
