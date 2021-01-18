@@ -71,7 +71,6 @@ def _create_seed_file(target_path: str, seed: int):
 
 def _create_run_script(target_path: str, uid: int, seed_file: str, probability: float):
     _ensure_gone(target_path)
-    python = subprocess.check_output(["which", "python3"])
     with open(target_path, "w") as f:
         f.write(textwrap.dedent("""\
             #!/usr/bin/env python3
