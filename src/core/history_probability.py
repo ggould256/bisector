@@ -62,7 +62,7 @@ class HistoryParameters:
 
 
 def p_value(history_parameters: HistoryParameters, revision_index: int):
-    """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions >= revision_index
+    """Compute a p-value against the hypothesis that the revisions <= @p revision_index and the revisions > revision_index
     are from the same distribution."""
     if history_parameters.count == 0:
         return 1.

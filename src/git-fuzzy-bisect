@@ -11,20 +11,30 @@ import subprocess
 import sys
 from typing import List
 
-from search_problem import SearchProblem
-from search_strategy import StrategyRunner
+from core.search_problem import SearchProblem
+from core.search_strategy import StrategyRunner
+
+# TODO(ggould) move git subprocess calls into call into git plumbing python
+# module.
 
 def extract_all_revisions(revision_strings: List[str]):
     """Given a list of revision specifications, generate a sorted list of git
     hashes to consider."""
-    # XXX TODO(ggould) implement revision ranges.
-    # XXX TODO(ggould) implement sorting.
-    return revision_strings
+    revisions = []
+    for rev_str in revision_strings:
+        new_revisions = subprocess.check_output(
+            ['git', 'rev-list', rev_str], encoding="utf-8").splitlines()
+        print("Revision parsing added revisions:", new_revisions)
+        revisions += new_revisions
+    return revisions
 
 
 def setup_revision(rev: str, cmd: str):
-    subprocess.check_call(["git", "co", rev])
-    subprocess.check_call(cmd)
+    print("Checking out revision " + rev)
+    subprocess.check_output(["git", "checkout", rev])
+    if cmd:
+        print("Executing setup command " + cmd)
+        subprocess.check_call(cmd)
 
 
 def test_revision(rev: str, cmd: List[str]):
@@ -39,22 +49,22 @@ def main(args: List[str]):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("revisions", nargs="+",
         help="Revisions (individual or ranges) to consider.")
-    parser.add_argument("test_cmd", nargs="1",
+    parser.add_argument("test_cmd", nargs=1,
         help="Command to run on a revision to get success or failure.")
     parser.add_argument("--setup_cmd", type=str, default=None,
         help="Command to set up a new revision for testing.")
     options = parser.parse_args(args)
     revisions = extract_all_revisions(options.revisions)
-    current_revision = subprocess.check_output(['git', 'log', "--pretty=%H", '--max-count=1'], cwd=target_dir).rstrip()
+    current_revision = subprocess.check_output(
+        ['git', 'log', "--pretty=%H", '--max-count=1']).rstrip()
     if current_revision not in revisions:
         current_revision = None
     problem = SearchProblem(
         versions=revisions,
         setup_fn=(lambda rev: setup_revision(rev, options.setup_cmd)),
         test_fn=(lambda rev: test_revision(rev, options.test_cmd)),
-        current_version=current_revision,e
-        )
-    StrategyRunner.solve(problem)
+        current_version=current_revision)
+    StrategyRunner().solve(problem=problem)
 
 
 if __name__ == '__main__':
