@@ -96,7 +96,7 @@ class TestParameterComputation(unittest.TestCase):
             if guess.guess_probability > 0.95:
                 break
         else:
-            self.assertTrue, 1(False, 1)
+            self.assertTrue(False, f"Failed to converge after {iterations} iterations")
         self.assertEqual(guess.best_revision, 'f')
 
 

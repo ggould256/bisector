@@ -4,6 +4,8 @@ set -ex
 
 python3 -m venv .venv
 . .venv/bin/activate
+pip install -U pip
+
 pip3 install -r requirements.txt
 
 pushd src
