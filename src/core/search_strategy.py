@@ -24,7 +24,9 @@ class StrategyRunner:
         setup_cost = problem.known_setup_cost
         test_cost = problem.known_test_cost
         assert (guess.guess_probability <= (1 / (len(problem.versions) - 1)))
+        iterations = 0
         while guess.guess_probability < target_probability:
+            iterations += 1
             next_revision = self._strategy.next_revision(
                 history, problem, setup_cost, test_cost)
             if problem.current_version != next_revision:
@@ -40,7 +42,9 @@ class StrategyRunner:
                 print(HistoryParameters(problem.versions, history)
                         .fancy_summary())
                 print(f"Best guess is change {guess.best_change} "
-                      f"with probability {guess.guess_probability}")
+                      f"with probability {guess.guess_probability:.2f} "
+                      f"after {iterations} iterations.")
+                print()
         return guess
 
     @staticmethod
