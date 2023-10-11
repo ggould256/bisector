@@ -6,7 +6,7 @@ import math
 import time
 
 from core.search_problem import SearchProblem
-from core.history_probability import Guess
+from core.history_probability import Guess, HistoryParameters
 
 class StrategyRunner:
     """Actually runs a strategy on a search problem.  Its ctor acts as the
@@ -17,7 +17,7 @@ class StrategyRunner:
         factory arguments to instantiate the strategy."""
         self._strategy = DefaultSearchStrategy()
 
-    def solve(self, problem: SearchProblem):
+    def solve(self, problem: SearchProblem, print_monitor=False):
         history = []
         guess = Guess(problem.versions, history)
         target_probability = 0.9  # TODO parameterize this (in the problem?)
@@ -36,6 +36,11 @@ class StrategyRunner:
                 lambda: problem.test_fn(next_revision))
             history += [(next_revision, result, test_cost)]
             guess = Guess(problem.versions, history)
+            if print_monitor:
+                print(HistoryParameters(problem.versions, history)
+                        .fancy_summary())
+                print(f"Best guess is change {guess.best_change} "
+                      f"with probability {guess.guess_probability}")
         return guess
 
     @staticmethod

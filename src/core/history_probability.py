@@ -1,63 +1,96 @@
-from math import sqrt
+from dataclasses import dataclass
+from math import floor, sqrt
 import scipy.stats
 from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
 
-Revision = str
-TestResult = Tuple[Revision, bool, float]  # (revision, success/failure, cost of test)
+Version = str
+TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost of test)
 History = List[TestResult]
+
+
+@dataclass(frozen=True, eq=True)
+class Change:
+    before: Version
+    after: Version
+
+    def to_string(self, max_len=10):
+        before = self.before
+        after = self.after
+        attempt = f"{before}->{after}"
+        if len(attempt) <= max_len: return attempt
+        trunc_len = floor((max_len - 4) / 2)
+        if len(before) > len(after):
+            before = before[:trunc_len] + "…"
+        attempt = f"{before}->{after}"
+        if len(attempt) <= max_len: return attempt
+        after = after[:trunc_len] + "…"
+        attempt = f"{before}->{after}"
+        if len(attempt) <= max_len: return attempt
+        before = before[:trunc_len] + "…"
+        attempt = f"{before}->{after}"
+        return attempt
+    
+    def __str__(self):
+        return self.to_string()
 
 
 class HistoryParameters:
     """Holds a variety of useful accumulated statistics about a history:
-        success_counts      For each revision, number of successes at revision
-        failure_counts      For each revision, number of failures at revision
-        counts              For each revision, number of tests at revision
-        success_count       Total number of successful tests over all revisions
-        failure_count       Total number of failed tests over all revisions
-        count               Total number of tests over all revisions
-        left_sum_successes  For each revision, the number of successes at that or any prior revision
-        left_sum_failures   For each revision, the number of failures at that or any prior revision
-        right_sum_successes For each revision, the number of successes at that or any subsequent revision
-        right_sum_failures  For each revision, the number of failures at that or any subsequent revision
+        versions            Name of each version     
+        success_counts      For each version, number of successes at version
+        failure_counts      For each version, number of failures at version
+        counts              For each version, number of tests at version
+        success_count       Total number of successful tests over all versions
+        failure_count       Total number of failed tests over all versions
+        count               Total number of tests over all versions
+        changes             Every version-to-version change
+        left_sum_successes  For each change, the number of successes in prior versions
+        left_sum_failures   For each change, the number of failures in prior versions
+        right_sum_successes For each change, the number of successes in subsequent versions
+        right_sum_failures  For each change, the number of failures in subsequent versions
     """
 
-    def __init__(self, revisions: List[Revision], history: History):
-        assert len(revisions)
+    def __init__(self, versions: List[Version], history: History):
+        assert len(versions) > 1
+        self.versions = versions
         self.success_counts = [sum(t for (r, t, _) in history if r is rev)
-                               for rev in revisions]
+                               for rev in versions]
         self.failure_counts = [sum((not t) for (r, t, _) in history if r is rev)
-                               for rev in revisions]
+                               for rev in versions]
         self.counts = [len([r for (r, _, _) in history if r is rev])
-                       for rev in revisions]
+                       for rev in versions]
 
         self.success_count = sum(self.success_counts)
         self.failure_count = sum(self.failure_counts)
         self.count = sum(self.counts)
 
-        self.left_sum_successes = []
+        self.changes = [Change(versions[i], versions[i+1])
+                        for i in range(len(versions) - 1)]
+        self.left_sum_successes = {}
         accumulator = 0
-        for s in self.success_counts:
-            accumulator += s
-            self.left_sum_successes.append(accumulator)
+        for i, c in enumerate(self.changes):
+            accumulator += self.success_counts[i]
+            self.left_sum_successes[c] = accumulator
 
-        self.left_sum_failures = []
+        self.left_sum_failures = {}
         accumulator = 0
-        for f in self.failure_counts:
-            accumulator += f
-            self.left_sum_failures.append(accumulator)
+        for i, c in enumerate(self.changes):
+            accumulator += self.failure_counts[i]
+            self.left_sum_failures[c] = accumulator
 
-        self.left_sum_counts = []
-        accumulator = 0
-        for c in self.counts:
-            accumulator += c
-            self.left_sum_counts.append(accumulator)
+        self.left_sum_counts = {
+            c: self.left_sum_failures[c] + self.left_sum_successes[c]
+            for c in self.changes}
 
-        self.right_sum_successes = [self.success_count - lss
-                                    for lss in [0] + self.left_sum_successes][:-1]
-        self.right_sum_failures = [self.failure_count - lsf
-                                   for lsf in [0] + self.left_sum_failures][:-1]
-        self.right_sum_counts = [self.count - lsc
-                                 for lsc in [0] + self.left_sum_counts][:-1]
+        self.right_sum_successes = {
+            c: self.success_count - self.left_sum_successes[c]
+            for c in self.changes}
+        self.right_sum_failures = {
+            c: self.failure_count - self.left_sum_failures[c]
+            for c in self.changes}
+        self.right_sum_counts = {
+            c: self.count - self.left_sum_counts[c]
+            for c in self.changes}
 
     def __str__(self):
         s = "{\n"
@@ -65,14 +98,71 @@ class HistoryParameters:
             s += str(k) + ": " + str(v) + "\n"
         s += "}"
         return s
+    
+    def fancy_summary(self):
+        """Returns a fancy sparkline unicode-art view of the history."""
+        import sparklines
+        def spark(vals):
+            return "".join(sparklines.sparklines(
+                vals, minimum=0, maximum=(None if any(vals) else 1)))
+
+        result = ""
+        first_indent_num = 19
+        for i, rev in enumerate(self.versions):
+            new_line = ""
+            new_line += f"{' ' * first_indent_num}{'|' * i}{str(rev)}"
+            result += new_line + "\n"
+        successes_sparkline = spark(self.success_counts)
+        failures_sparkline = spark(self.failure_counts)
+        result += f"        Successes: {spark(self.success_counts)}\n"
+        result += f"         Failures: {spark(self.failure_counts)}\n"
+
+        result += "\n"
+        second_indent_num = (46
+                             - len(self.changes)
+                             - max(len(str(c)) for c in self.changes))
+        for i, change in enumerate(self.changes):
+            new_line = ""
+            new_line += f"{' ' * first_indent_num}{'|' * i}{str(change)}"
+            additional_indent = second_indent_num - len(new_line)
+            new_line += f"{' ' * additional_indent}{'|' * i}{str(change)}"
+            result += new_line + "\n"
+        lss = [self.left_sum_successes[c] for c in self.changes]
+        rss = [self.right_sum_successes[c] for c in self.changes]
+        lsf = [self.left_sum_failures[c] for c in self.changes]
+        rsf = [self.right_sum_failures[c] for c in self.changes]
+        lsc = [sum(pair) for pair in zip(lss, lsf)]
+        rsc = [sum(pair) for pair in zip(rss, rsf)]
+        result += f"Successes (before) {spark(lss)   }     (after) {spark(rss)   }\n"
+        result += f"Failures  (before) {spark(lsf)   }     (after) {spark(rsf)   }\n"
+
+        lratio = []
+        rratio = []
+        for i, _ in enumerate(self.changes):
+            if lsc[i] == 0:
+                lratio.append(None)
+            else:
+                lratio.append(lss[i] / lsc[i])
+            if rsc[i] == 0:
+                rratio.append(None)
+            else:
+                rratio.append(rss[i] / rsc[i])
+        result += f"         leftward: {spark(lratio)}  rightward: {spark(rratio)}\n"
+
+        ps = [p_value(self, c) for c in self.changes]
+        probs = [1/p if p > 0 else None for p in ps]  # unweighted :-(
+        result += f"          p-value: {spark(ps)    }      probs: {spark(probs)}\n"
+        
+        return result
 
 
-def p_value(
-        history_parameters: HistoryParameters, revision_index: int) -> float:
-    """Compute the change p-value for a given revision.
+def p_value(history_parameters: HistoryParameters,
+            change: Change
+        ) -> float:
+    """Compute the change p-value for a given change.
     
     Compute a p-value against the hypothesis that the
-    revisions <= @p revision_index and the revisions > revision_index
+    versions <= @p change.before and the versions >= change.after
     are from the same distribution.
     
     @Returns 1 if the history is inadequate to estimate.
@@ -80,10 +170,10 @@ def p_value(
     if history_parameters.count == 0:
         return 1.
     hypothesis_p = history_parameters.success_count / history_parameters.count
-    left_n = history_parameters.left_sum_counts[revision_index]
-    left_successes = history_parameters.left_sum_successes[revision_index]
-    right_n = history_parameters.right_sum_counts[revision_index + 1]
-    right_successes = history_parameters.right_sum_successes[revision_index + 1]
+    left_n = history_parameters.left_sum_counts[change]
+    left_successes = history_parameters.left_sum_successes[change]
+    right_n = history_parameters.right_sum_counts[change]
+    right_successes = history_parameters.right_sum_successes[change]
     if left_n < 1 or right_n < 1:
         return 1.
 
@@ -100,15 +190,17 @@ def p_value(
 
 
 def history_probabilities(
-        revisions: List[Revision], history: History) -> List[float]:
-    """Given a list of revisions and tests against those revisions, compute
-    the likelihood that each revision is the last one before a change in
-    success probability.  The last revision has no well-defined probability
+        versions: List[Version],
+        history: History
+    ) -> List[Tuple[Change, float]]:
+    """Given a list of versions and tests against those versions, compute
+    the likelihood that each version is the last one before a change in
+    success probability.  The last version has no well-defined probability
     and is omitted.
     """
-    params = HistoryParameters(revisions, history)
-
-    ps = [p_value(params, i) for i in range(0, len(revisions) - 1)]
+    params = HistoryParameters(versions, history)
+    changes = params.changes
+    ps = [p_value(params, c) for c in changes]
 
     # The above ps are "p-values" -- P(A==B|r).  For reasons described in
     # other documents, an application of Bayes' theorem tells us that
@@ -116,17 +208,25 @@ def history_probabilities(
     # probabilities.
     weights = [1 / p for p in ps]
     total_weight = sum(weights)
-    revision_probabilities = [weight / total_weight for weight in weights]
+    version_probabilities = [weight / total_weight for weight in weights]
 
-    return revision_probabilities
+    return [(changes[i], version_probabilities[i]) for i in range(len(changes))]
 
 
 class Guess:
     """A structure representing a best-guess estimate of the critical
-    revision and its likelihood.
+    change and its likelihood.
     """
-    def __init__(self, revisions: List[Revision], history: History):
-        probabilities = history_probabilities(revisions, history)
-        (self.best_revision_index, self.guess_probability) = \
-            max(enumerate(probabilities), key=lambda x: x[1])
-        self.best_revision = revisions[self.best_revision_index]
+    def __init__(self, versions: List[Version], history: History):
+        probabilities = history_probabilities(versions, history)
+        (self._best_version_index,
+         (self._best_change, self._guess_probability)) = max(
+             enumerate(probabilities), key=lambda x: x[1][1])
+
+    @property
+    def best_change(self):
+        return self._best_change
+
+    @property
+    def guess_probability(self):
+        return self._guess_probability

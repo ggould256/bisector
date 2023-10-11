@@ -16,6 +16,4 @@ python3 -m unittest core.test.history_probability_test
 python3 -m unittest core.test.search_test
 popd
 
-unset -ex
-
 deactivate

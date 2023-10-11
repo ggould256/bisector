@@ -97,7 +97,7 @@ class TestParameterComputation(unittest.TestCase):
                 break
         else:
             self.assertTrue(False, f"Failed to converge after {iterations} iterations")
-        self.assertEqual(guess.best_revision, 'f')
+        self.assertEqual(guess.best_change, 'f->g')
 
 
 if __name__ == '__main__':
