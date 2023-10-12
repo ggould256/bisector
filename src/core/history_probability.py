@@ -29,14 +29,14 @@ class Change:
         before = before[:trunc_len] + "…"
         attempt = f"{before}->{after}"
         return attempt
-    
+
     def __str__(self):
         return self.to_string()
 
 
 class HistoryParameters:
     """Holds a variety of useful accumulated statistics about a history:
-        versions            Name of each version     
+        versions            Name of each version
         success_counts      For each version, number of successes at version
         failure_counts      For each version, number of failures at version
         counts              For each version, number of tests at version
@@ -98,7 +98,7 @@ class HistoryParameters:
             s += str(k) + ": " + str(v) + "\n"
         s += "}"
         return s
-    
+
     def fancy_summary(self):
         """Returns a fancy sparkline unicode-art view of the history."""
         import sparklines
@@ -107,18 +107,18 @@ class HistoryParameters:
                 vals, minimum=0, maximum=(None if any(vals) else 1)))
 
         result = ""
-        first_indent_num = 19
+        first_indent_num = 20
         for i, rev in enumerate(self.versions):
             new_line = ""
             new_line += f"{' ' * first_indent_num}{'|' * i}{str(rev)}"
             result += new_line + "\n"
         successes_sparkline = spark(self.success_counts)
         failures_sparkline = spark(self.failure_counts)
-        result += f"        Successes: {spark(self.success_counts)}\n"
-        result += f"         Failures: {spark(self.failure_counts)}\n"
+        result += f"         Successes: {spark(self.success_counts)}\n"
+        result += f"          Failures: {spark(self.failure_counts)}\n"
 
         result += "\n"
-        second_indent_num = (46
+        second_indent_num = (50
                              - len(self.changes)
                              - max(len(str(c)) for c in self.changes))
         for i, change in enumerate(self.changes):
@@ -133,8 +133,8 @@ class HistoryParameters:
         rsf = [self.right_sum_failures[c] for c in self.changes]
         lsc = [sum(pair) for pair in zip(lss, lsf)]
         rsc = [sum(pair) for pair in zip(rss, rsf)]
-        result += f"Successes (before) {spark(lss)   }     (after) {spark(rss)   }\n"
-        result += f"Failures  (before) {spark(lsf)   }     (after) {spark(rsf)   }\n"
+        result += f"Successes  (before) {spark(lss)   }      (after) {spark(rss)   }\n"
+        result += f"Failures   (before) {spark(lsf)   }      (after) {spark(rsf)   }\n"
 
         lratio = []
         rratio = []
@@ -147,12 +147,13 @@ class HistoryParameters:
                 rratio.append(None)
             else:
                 rratio.append(rss[i] / rsc[i])
-        result += f"         leftward: {spark(lratio)}  rightward: {spark(rratio)}\n"
+        result += f"Succ. rate (before) {spark(lratio)}      (after) {spark(rratio)}\n"
 
         ps = [p_value(self, c) for c in self.changes]
         probs = [1/p if p > 0 else None for p in ps]  # unweighted :-(
-        result += f"          p-value: {spark(ps)    }      probs: {spark(probs)}\n"
-        
+        result += "\n"
+        result += f"           p-value: {spark(ps)    }       probs: {spark(probs)}\n"
+
         return result
 
 
@@ -160,11 +161,11 @@ def p_value(history_parameters: HistoryParameters,
             change: Change
         ) -> float:
     """Compute the change p-value for a given change.
-    
+
     Compute a p-value against the hypothesis that the
     versions <= @p change.before and the versions >= change.after
     are from the same distribution.
-    
+
     @Returns 1 if the history is inadequate to estimate.
     """
     if history_parameters.count == 0:
@@ -218,6 +219,7 @@ class Guess:
     change and its likelihood.
     """
     def __init__(self, versions: List[Version], history: History):
+        self.history = history
         probabilities = history_probabilities(versions, history)
         (self._best_version_index,
          (self._best_change, self._guess_probability)) = max(
