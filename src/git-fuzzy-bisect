@@ -47,11 +47,14 @@ def test_revision(rev: str, cmd: List[str]):
 
 def main(args: List[str]):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("revisions", nargs="+",
+    parser.add_argument(
+        "revisions", nargs="+",
         help="Revisions (individual or ranges) to consider.")
-    parser.add_argument("test_cmd", nargs=1,
+    parser.add_argument(
+        "test_cmd", nargs=1,
         help="Command to run on a revision to get success or failure.")
-    parser.add_argument("--setup_cmd", type=str, default=None,
+    parser.add_argument(
+        "--setup_cmd", type=str,default=None,
         help="Command to set up a new revision for testing.")
     options = parser.parse_args(args)
     revisions = extract_all_revisions(options.revisions)
