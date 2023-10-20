@@ -5,8 +5,8 @@ to prove the concept."""
 import math
 import time
 
-from core.search_problem import SearchProblem
-from core.history_probability import Guess, HistoryParameters
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+from git_fuzzy_bisector.core.history_probability import Guess, HistoryParameters
 
 class StrategyRunner:
     """Actually runs a strategy on a search problem.  Its ctor acts as the

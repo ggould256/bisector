@@ -1,5 +1,5 @@
-from core.search_problem import SearchProblem
-from core.search_strategy import StrategyRunner
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+from git_fuzzy_bisector.core.search_strategy import StrategyRunner
 
 import unittest
 
@@ -21,7 +21,7 @@ class TestSearch(unittest.TestCase):
             test_fn=self._test_fn,
             known_setup_cost=10,
             known_test_cost=1)
-        guess = StrategyRunner().solve(problem, print_monitor=True)
+        guess = StrategyRunner().solve(problem, print_monitor=False)
         self.assertEqual(guess.best_change.before, 'banana')
         self.assertEqual(guess.best_change.after, 'carrot')
         self.assertGreater(guess.guess_probability, 0.9)

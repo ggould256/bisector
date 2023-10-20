@@ -1,4 +1,4 @@
-from core.history_probability import (
+from git_fuzzy_bisector.core.history_probability import (
     Change, Guess, HistoryParameters, history_probabilities, p_value)
 
 import random

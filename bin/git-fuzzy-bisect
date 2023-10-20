@@ -11,8 +11,8 @@ import subprocess
 import sys
 from typing import List
 
-from core.search_problem import SearchProblem
-from core.search_strategy import StrategyRunner
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+from git_fuzzy_bisector.core.search_strategy import StrategyRunner
 
 # TODO(ggould) move git subprocess calls into call into git plumbing python
 # module.
@@ -54,8 +54,12 @@ def main(args: List[str]):
         "test_cmd", nargs=1,
         help="Command to run on a revision to get success or failure.")
     parser.add_argument(
-        "--setup_cmd", type=str,default=None,
+        "--setup_cmd", type=str, default=None,
         help="Command to set up a new revision for testing.")
+    parser.add_argument(
+        "--quiet", action="store_true",
+        help="Reduce the verbosity of the output",
+    )
     options = parser.parse_args(args)
     revisions = extract_all_revisions(options.revisions)
     current_revision = subprocess.check_output(
@@ -67,7 +71,7 @@ def main(args: List[str]):
         setup_fn=(lambda rev: setup_revision(rev, options.setup_cmd)),
         test_fn=(lambda rev: test_revision(rev, options.test_cmd)),
         current_version=current_revision)
-    StrategyRunner().solve(problem=problem)
+    StrategyRunner().solve(problem=problem, print_monitor=(not options.quiet))
 
 
 if __name__ == '__main__':
