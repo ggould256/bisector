@@ -1,5 +1,14 @@
 # Fuzzy Bisector for Git
 
+A conventional bisector, such as `git bisect`, searches a range of versions
+to find where a test went from passing to failing.  This is famously achieved
+by recursively testing the version half way between the last known good and
+first known good revision.
+
+However a more common problem in modern codebases is that a test that used to
+usually pass now more often fails.  A conventional bisect approach struggles
+to answer this question.
+
 This is a tool created to do the work of `git bisect` when you are concerned
 not with an outright failing test but with a change in the frequency with
 which a test fails.  It is meant to solve both the "when did this test become

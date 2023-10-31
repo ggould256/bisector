@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
-"""This is the git entry point to the fuzzy bisector.  The `git` command line
-considers any command whose name starts with `git-` to be a git subcommand; by
-putting this file (or a generated binary from it) in your path, you will make
-the command `git fuzzy-bisect` exist.
-"""
+# This is the git entry point to the fuzzy bisector.  The `git` command line
+# considers any command whose name starts with `git-` to be a git subcommand; by
+# putting this file (or a generated binary from it) in your path, you will make
+# the command `git fuzzy-bisect` exist.
+
+'''"Fuzzy" Bisector: Find changes in test failure frequency
+
+This can accept a list of revision SHAs or a first and last revision for an
+inclusive range.  The test is assumed to have had different failure
+probabilities at the first and last specified revision; that is, that a change
+in failure probability was introduced at some revision other than the first.
+'''
 
 import argparse
 import subprocess
@@ -15,7 +22,7 @@ from git_fuzzy_bisector.core.search_problem import SearchProblem
 from git_fuzzy_bisector.core.search_strategy import StrategyRunner
 
 # TODO(ggould) move git subprocess calls into call into git plumbing python
-# module.
+# module.  Or don't -- it seems to be less than supported these days?
 
 def extract_all_revisions(revision_strings: List[str]):
     """Given a list of revision specifications, generate a sorted list of git
@@ -23,7 +30,8 @@ def extract_all_revisions(revision_strings: List[str]):
     revisions = []
     for rev_str in revision_strings:
         new_revisions = subprocess.check_output(
-            ['git', 'rev-list', rev_str], encoding="utf-8").splitlines()
+            ['git', 'log', '-n1', '--format=%h', rev_str], encoding="utf-8"
+            ).splitlines()
         print("Revision parsing added revisions:", new_revisions)
         revisions += new_revisions
     return revisions
@@ -58,12 +66,22 @@ def main(args: List[str]):
         help="Command to set up a new revision for testing.")
     parser.add_argument(
         "--quiet", action="store_true",
-        help="Reduce the verbosity of the output",
-    )
+        help="Reduce the verbosity of the output")
+    parser.add_argument(
+        "--first_revision", "-f", type=str, default=None, metavar="REV",
+        help="Consider every revision from REV to `--last_revision`")
+    parser.add_argument(
+        "--last_revision", "-l", type=str, default="HEAD", metavar="REV",
+        help="Consider every revision from REV to `--last_revision`")
+
     options = parser.parse_args(args)
-    revisions = extract_all_revisions(options.revisions)
+    revisions = []
+    if options.revisions:
+        revisions += extract_all_revisions(options.revisions)
+    if options.first_revision:
+        revisions += [f"{options.first_revision}^..{options.last_revision}"]
     current_revision = subprocess.check_output(
-        ['git', 'log', "--pretty=%H", '--max-count=1']).rstrip()
+        ['git', 'log', "--format=%H", '--max-count=1']).rstrip()
     if current_revision not in revisions:
         current_revision = None
     problem = SearchProblem(
