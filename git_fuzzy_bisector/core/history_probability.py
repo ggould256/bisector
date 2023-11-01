@@ -106,26 +106,47 @@ class HistoryParameters:
             return "".join(sparklines.sparklines(
                 vals, minimum=0, maximum=(None if any(vals) else 1)))
 
+        # Indentation picture:
+        #               VERSIONNAME
+        #               |||||||VERSIONNAME
+        #         TITLE ========
+        # [first ident ][graph ][hangover]
+        #               CHANGENAME          CHANGENAME
+        #               |||||||CHANGENAME   |||||||CHANGENAME
+        #         TITLE ========      TITLE ========
+        # [first ident ][graph ][hangover]
+        # [second indent...................][graph ]
+        LONGEST_FIRST_TITLE = 20  # "Succ. rate (before)"
+        LONGEST_SECOND_TITLE = 8  # "(after) "
+        first_graph_indent_num = LONGEST_FIRST_TITLE
+        version_graph_width = len(self.versions)
+        change_graph_width = len(self.changes)
+        change_graph_hangover = max(len(str(c)) for c in self.changes)
+        second_graph_indent_num = (
+            first_graph_indent_num
+            + change_graph_width
+            + max(LONGEST_SECOND_TITLE + 1, change_graph_hangover))
+
+        def right_just_title(title, width):
+            return ' ' * (width - len(title)) + title
+
         result = ""
-        first_indent_num = 20
+        first_indent = ' ' * first_graph_indent_num
         for i, rev in enumerate(self.versions):
             new_line = ""
-            new_line += f"{' ' * first_indent_num}{'|' * i}{str(rev)}"
+            new_line += f"{first_indent}{'|' * i}{str(rev)}"
             result += new_line + "\n"
         successes_sparkline = spark(self.success_counts)
         failures_sparkline = spark(self.failure_counts)
-        result += f"         Successes: {spark(self.success_counts)}\n"
-        result += f"          Failures: {spark(self.failure_counts)}\n"
+        result += right_just_title("Successes: ", first_graph_indent_num) + spark(self.success_counts) + "\n"
+        result += right_just_title("Failures: ", first_graph_indent_num) + spark(self.failure_counts) + "\n"
 
         result += "\n"
-        second_indent_num = (50
-                             - len(self.changes)
-                             - max(len(str(c)) for c in self.changes))
         for i, change in enumerate(self.changes):
             new_line = ""
-            new_line += f"{' ' * first_indent_num}{'|' * i}{str(change)}"
-            additional_indent = second_indent_num - len(new_line)
-            new_line += f"{' ' * additional_indent}{'|' * i}{str(change)}"
+            new_line += f"{first_indent}{'|' * i}{str(change)}"
+            additional_indent = ' ' * (second_graph_indent_num - len(new_line))
+            new_line += f"{additional_indent}{'|' * i}{str(change)}"
             result += new_line + "\n"
         lss = [self.left_sum_successes[c] for c in self.changes]
         rss = [self.right_sum_successes[c] for c in self.changes]
@@ -133,8 +154,14 @@ class HistoryParameters:
         rsf = [self.right_sum_failures[c] for c in self.changes]
         lsc = [sum(pair) for pair in zip(lss, lsf)]
         rsc = [sum(pair) for pair in zip(rss, rsf)]
-        result += f"Successes  (before) {spark(lss)   }      (after) {spark(rss)   }\n"
-        result += f"Failures   (before) {spark(lsf)   }      (after) {spark(rsf)   }\n"
+        def two_graph_line(first_title, first_data, second_title, second_data):
+            new_line = right_just_title(first_title, first_graph_indent_num)
+            new_line += spark(first_data)
+            new_line += right_just_title("(after) ", second_graph_indent_num - len(new_line))
+            new_line += spark(second_data) + "\n" 
+            return new_line
+        result += two_graph_line("Successes (before) ", lss, "(after) ", rss)
+        result += two_graph_line("Failures (before) ", lsf, "(after) ", rsf)
 
         lratio = []
         rratio = []
@@ -147,13 +174,13 @@ class HistoryParameters:
                 rratio.append(None)
             else:
                 rratio.append(rss[i] / rsc[i])
-        result += f"Succ. rate (before) {spark(lratio)}      (after) {spark(rratio)}\n"
+        result += two_graph_line("Succ. rate (before) ", lratio,
+                                 "(after) ", rratio)
 
         ps = [p_value(self, c) for c in self.changes]
         probs = [1/p if p > 0 else None for p in ps]  # unweighted :-(
         result += "\n"
-        result += f"           p-value: {spark(ps)    }       probs: {spark(probs)}\n"
-
+        result += two_graph_line("p-value: ", ps, "probs: ", probs)
         return result
 
 
