@@ -6,7 +6,7 @@ import math
 import time
 
 from git_fuzzy_bisector.core.search_problem import SearchProblem
-from git_fuzzy_bisector.core.history_probability import Guess, HistoryParameters
+from git_fuzzy_bisector.core.history_analysis import Guess, HistorySummary
 
 class StrategyRunner:
     """Actually runs a strategy on a search problem.  Its ctor acts as the
@@ -39,7 +39,7 @@ class StrategyRunner:
             history += [(next_revision, result, test_cost)]
             guess = Guess(problem.versions, history)
             if print_monitor:
-                print(HistoryParameters(problem.versions, history)
+                print(HistorySummary(problem.versions, history)
                         .fancy_summary())
                 print(f"Best guess is change {guess.best_change} "
                       f"with probability {guess.guess_probability:.2f} "

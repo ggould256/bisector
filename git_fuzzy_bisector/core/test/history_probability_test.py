@@ -1,5 +1,5 @@
-from git_fuzzy_bisector.core.history_probability import (
-    Change, Guess, HistoryParameters, history_probabilities, p_value)
+from git_fuzzy_bisector.core.history_analysis import (
+    Change, Guess, HistorySummary, history_probabilities, p_value)
 
 import random
 import unittest
@@ -12,7 +12,7 @@ class TestParameterComputation(unittest.TestCase):
         history = [('a', False, 1), ('a', False, 1),
                    ('b', True, 1), ('b', False, 1),
                    ('c', True, 1), ('c', True, 1), ]
-        params = HistoryParameters(versions, history)
+        params = HistorySummary(versions, history)
         self.assertEqual(params.versions, ["a", "b", "c"])
         self.assertEqual(params.success_counts, [0, 1, 2])
         self.assertEqual(params.failure_counts, [2, 1, 0])
@@ -37,14 +37,14 @@ class TestParameterComputation(unittest.TestCase):
         history = [('a', False, 1), ('a', False, 1),
                    ('b', True, 1), ('b', False, 1),
                    ('c', True, 1), ('c', True, 1), ]
-        params = HistoryParameters(versions, history)
+        params = HistorySummary(versions, history)
 
         # Scenario is symmetric
         self.assertEqual(p_value(params, Change('a', 'b')),
                          p_value(params, Change('b', 'c')))
 
         # Still symmetric with doubled values
-        doubled_params = HistoryParameters(versions, history * 2)
+        doubled_params = HistorySummary(versions, history * 2)
         self.assertEqual(p_value(doubled_params, Change('a', 'b')),
                          p_value(doubled_params, Change('b', 'c')))
 
@@ -59,7 +59,7 @@ class TestParameterComputation(unittest.TestCase):
         history = [('a', False, 1), ('b', False, 1), ('c', True, 1), ]
         ps = (1, 1)
         for i in range(5):
-            params = HistoryParameters(versions, history)
+            params = HistorySummary(versions, history)
             new_ps = (p_value(params, Change('a', 'b')),
                       p_value(params, Change('b', 'c')))
             assert (new_ps[0] / new_ps[1]) > (ps[0] / ps[1])

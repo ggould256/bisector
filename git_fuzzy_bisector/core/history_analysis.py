@@ -34,7 +34,7 @@ class Change:
         return self.to_string()
 
 
-class HistoryParameters:
+class HistorySummary:
     """Holds a variety of useful accumulated statistics about a history:
         versions            Name of each version
         success_counts      For each version, number of successes at version
@@ -184,7 +184,7 @@ class HistoryParameters:
         return result
 
 
-def p_value(history_parameters: HistoryParameters,
+def p_value(history_parameters: HistorySummary,
             change: Change
         ) -> float:
     """Compute the change p-value for a given change.
@@ -212,9 +212,11 @@ def p_value(history_parameters: HistoryParameters,
     if p_left == 0 or p_right == 0:
         return 0.
 
-    # Combine p-values via harmonic sum; TODO(ggould) is this correct?
-    p = 1 / (1 / p_left + 1 / p_right)
-    return p
+    # Fisher's method assumes the p-values are independent, which is not true
+    # here (the common expectation value `hypothesis_p` is in common between
+    # the two arms).  As such this value is (slightly) unsound for small n.
+    _stat, pval = scipy.stats.combine_pvalues(pvalues=[p_left, p_right])
+    return pval
 
 
 def history_probabilities(
@@ -226,7 +228,7 @@ def history_probabilities(
     success probability.  The last version has no well-defined probability
     and is omitted.
     """
-    params = HistoryParameters(versions, history)
+    params = HistorySummary(versions, history)
     changes = params.changes
     ps = [p_value(params, c) for c in changes]
 
