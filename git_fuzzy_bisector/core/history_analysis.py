@@ -4,7 +4,7 @@ import scipy.stats
 from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
 
 Version = str
-TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost of test)
+TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost)
 History = List[TestResult]
 
 
@@ -44,10 +44,10 @@ class HistorySummary:
         failure_count       Total number of failed tests over all versions
         count               Total number of tests over all versions
         changes             Every version-to-version change
-        left_sum_successes  For each change, the number of successes in prior versions
-        left_sum_failures   For each change, the number of failures in prior versions
-        right_sum_successes For each change, the number of successes in subsequent versions
-        right_sum_failures  For each change, the number of failures in subsequent versions
+        left_sum_successes  For each change, # of successes in prior versions
+        left_sum_failures   For each change, # of failures in prior versions
+        right_sum_successes For each change, # of successes in subsequent vers
+        right_sum_failures  For each change, # of failures in subsequent vers
     """
 
     def __init__(self, versions: List[Version], history: History):
@@ -55,7 +55,8 @@ class HistorySummary:
         self.versions = versions
         self.success_counts = [sum(t for (r, t, _) in history if r is rev)
                                for rev in versions]
-        self.failure_counts = [sum((not t) for (r, t, _) in history if r is rev)
+        self.failure_counts = [sum((not t)
+                                   for (r, t, _) in history if r is rev)
                                for rev in versions]
         self.counts = [len([r for (r, _, _) in history if r is rev])
                        for rev in versions]
@@ -138,14 +139,17 @@ class HistorySummary:
             result += new_line + "\n"
         successes_sparkline = spark(self.success_counts)
         failures_sparkline = spark(self.failure_counts)
-        result += right_just_title("Successes: ", first_graph_indent_num) + spark(self.success_counts) + "\n"
-        result += right_just_title("Failures: ", first_graph_indent_num) + spark(self.failure_counts) + "\n"
+        result += right_just_title("Successes: ", first_graph_indent_num) 
+        result += spark(self.success_counts) + "\n"
+        result += right_just_title("Failures: ", first_graph_indent_num) 
+        result += spark(self.failure_counts) + "\n"
 
         result += "\n"
         for i, change in enumerate(self.changes):
             new_line = ""
             new_line += f"{first_indent}{'|' * i}{str(change)}"
-            additional_indent = ' ' * (second_graph_indent_num - len(new_line))
+            additional_indent = (
+                ' ' * (second_graph_indent_num - len(new_line)))
             new_line += f"{additional_indent}{'|' * i}{str(change)}"
             result += new_line + "\n"
         lss = [self.left_sum_successes[c] for c in self.changes]
@@ -154,10 +158,12 @@ class HistorySummary:
         rsf = [self.right_sum_failures[c] for c in self.changes]
         lsc = [sum(pair) for pair in zip(lss, lsf)]
         rsc = [sum(pair) for pair in zip(rss, rsf)]
-        def two_graph_line(first_title, first_data, second_title, second_data):
+        def two_graph_line(first_title, first_data,
+                           second_title, second_data):
             new_line = right_just_title(first_title, first_graph_indent_num)
             new_line += spark(first_data)
-            new_line += right_just_title("(after) ", second_graph_indent_num - len(new_line))
+            new_line += right_just_title(
+                second_title, second_graph_indent_num - len(new_line))
             new_line += spark(second_data) + "\n" 
             return new_line
         result += two_graph_line("Successes (before) ", lss, "(after) ", rss)
@@ -206,9 +212,11 @@ def p_value(history_parameters: HistorySummary,
         return 1.
 
     p_left = scipy.stats.binomtest(
-        left_successes, left_n, hypothesis_p, alternative='two-sided').pvalue
+        left_successes, left_n, hypothesis_p,
+        alternative='two-sided').pvalue
     p_right = scipy.stats.binomtest(
-        right_successes, right_n, hypothesis_p, alternative='two-sided').pvalue
+        right_successes, right_n, hypothesis_p,
+        alternative='two-sided').pvalue
     if p_left == 0 or p_right == 0:
         return 0.
 
@@ -240,7 +248,8 @@ def history_probabilities(
     total_weight = sum(weights)
     version_probabilities = [weight / total_weight for weight in weights]
 
-    return [(changes[i], version_probabilities[i]) for i in range(len(changes))]
+    return [(changes[i], version_probabilities[i])
+            for i in range(len(changes))]
 
 
 class Guess:
