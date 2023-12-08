@@ -1,5 +1,5 @@
 from git_fuzzy_bisector.core.history_analysis import (
-    Change, Guess, HistorySummary, history_probabilities, p_value)
+    Change, Guess, HistorySummary, history_probabilities, p_sides_differ)
 
 import random
 import unittest
@@ -40,17 +40,17 @@ class TestParameterComputation(unittest.TestCase):
         params = HistorySummary(versions, history)
 
         # Scenario is symmetric
-        self.assertEqual(p_value(params, Change('a', 'b')),
-                         p_value(params, Change('b', 'c')))
+        self.assertEqual(p_sides_differ(params, Change('a', 'b')),
+                         p_sides_differ(params, Change('b', 'c')))
 
         # Still symmetric with doubled values
         doubled_params = HistorySummary(versions, history * 2)
-        self.assertEqual(p_value(doubled_params, Change('a', 'b')),
-                         p_value(doubled_params, Change('b', 'c')))
+        self.assertEqual(p_sides_differ(doubled_params, Change('a', 'b')),
+                         p_sides_differ(doubled_params, Change('b', 'c')))
 
         # ...but increasingly unlikely that the null hypo is true at any rev.
-        self.assertGreater(p_value(params, Change('a', 'b')),
-                           p_value(doubled_params, Change('a', 'b')))
+        self.assertGreater(p_sides_differ(params, Change('a', 'b')),
+                           p_sides_differ(doubled_params, Change('a', 'b')))
 
     def test_p_formula_behaviour(self):
         """Sanity-check that the p formula works as expected on compliant
@@ -60,8 +60,8 @@ class TestParameterComputation(unittest.TestCase):
         ps = (1, 1)
         for i in range(5):
             params = HistorySummary(versions, history)
-            new_ps = (p_value(params, Change('a', 'b')),
-                      p_value(params, Change('b', 'c')))
+            new_ps = (p_sides_differ(params, Change('a', 'b')),
+                      p_sides_differ(params, Change('b', 'c')))
             assert (new_ps[0] / new_ps[1]) > (ps[0] / ps[1])
             ps = new_ps
             history *= 2

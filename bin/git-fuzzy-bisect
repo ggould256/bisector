@@ -73,6 +73,10 @@ def main(args: List[str]):
     parser.add_argument(
         "--last_revision", "-l", type=str, default="HEAD", metavar="REV",
         help="Consider every revision from REV to `--last_revision`")
+    parser.add_argument(
+        "--test_limit", "-n", type=int, default=None, metavar="N",
+        help="Perform no more than N tests; exit with nonzero code if that "
+             "wasn't enough to fully convict any particular change.")
 
     options = parser.parse_args(args)
     revisions = []
@@ -89,7 +93,10 @@ def main(args: List[str]):
         setup_fn=(lambda rev: setup_revision(rev, options.setup_cmd)),
         test_fn=(lambda rev: test_revision(rev, options.test_cmd)),
         current_version=current_revision)
-    StrategyRunner().solve(problem=problem, print_monitor=(not options.quiet))
+    StrategyRunner().solve(
+        problem=problem,
+        print_monitor=(not options.quiet),
+        test_limit=options.test_limit)
 
 
 if __name__ == '__main__':

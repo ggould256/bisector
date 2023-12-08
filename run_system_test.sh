@@ -6,8 +6,8 @@ set -ex
 
 test_fixture_dir="$temp_dir/fixture"
 rm -rf $test_fixture_dir
-revisions=`python3 git_fuzzy_bisector/fixture/fixture.py --quiet $test_fixture_dir`
+revisions=`python3 git_fuzzy_bisector/fixture/fixture.py --initial-prob 0.6 --final-prob 0.4 --quiet $test_fixture_dir`
 cd $test_fixture_dir
-git-fuzzy-bisect $revisions ./run.py
+git-fuzzy-bisect --test_limit 20 $revisions ./run.py
 
 rm -rf $temp_dir
