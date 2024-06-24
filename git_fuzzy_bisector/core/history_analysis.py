@@ -201,10 +201,12 @@ def p_sides_differ(
     versions <= @p change.before and the versions >= change.after
     are from the same distribution.
 
-    NOTE:  This is not a useful P-value as such:  The null hypothesis
+    NOTE:  In context, this is not a P-value as such:  The null hypothesis
     is in fact always false _ex hypothesi_ within the definition of the
-    problem.  Rather, this p value serves as a secondary check that a
-    guessed change has enough statistical power to accept.
+    problem.  This must be corrected for via re-weighting later to ensure
+    that the complements of the P values sum to 1 (i.e. that there is exactly
+    one guilty revision) or, alternatively, that the P values sum to
+    num_changes - 1 (i.e. that there are N-1 revisions without a change).
 
     @Returns 1 if the history is inadequate to estimate.
     """
@@ -213,7 +215,8 @@ def p_sides_differ(
           history_params.right_sum_successes[change]],
          [history_params.left_sum_failures[change],
           history_params.right_sum_failures[change]]])
-    return scipy.stats.fisher_exact(outcome_matrix).pvalue
+    result = scipy.stats.fisher_exact(outcome_matrix)
+    return result.pvalue  # type: ignore -- scipy type hints are incomplete.
 
 def history_probabilities(
         versions: List[Version],
@@ -230,11 +233,9 @@ def history_probabilities(
 
     # The above ps are "p-values" -- P(A==B|r).  For reasons described in
     # other documents, an application of Bayes' theorem tells us that
-    # P(r|A!=B) is simply the normalization of the complement of these
-    # probabilities.
-    weights = [1 / p for p in ps]
-    total_weight = sum(weights)
-    version_probabilities = [weight / total_weight for weight in weights]
+    # P(r|A!=B) is the normalization of the complement of these probabilities.
+    total_p_complements = sum((1 - p for p in ps))
+    version_probabilities = [1 - (p / total_p_complements) for p in ps]
 
     return [(changes[i], version_probabilities[i])
             for i in range(len(changes))]
