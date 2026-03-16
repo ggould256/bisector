@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from math import floor, sqrt
 import numpy as np
 import scipy.stats
-from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
+from typing import Callable, Dict, Iterable, Generic, List, Tuple, TypeVar
 
 Version = str
 TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost)
@@ -11,6 +13,11 @@ History = List[TestResult]
 
 @dataclass(frozen=True, eq=True)
 class Change:
+    """Represents a change, i.e. a pair of consecutive versions.
+    
+    This class exists solely to prevent fencepost errors (there is one
+    fewer changes than versions), but it also makes for a slightly clearer
+    pretty-print of the changes in question."""
     before: Version
     after: Version
 
@@ -33,6 +40,131 @@ class Change:
 
     def __str__(self):
         return self.to_string()
+
+
+# Operations on lists of versions and changes.
+
+def index_map(versions: List[Version]) -> Dict[Version, int]:
+    """Returns a map that is the inverse of `versions`."""
+    return {v: i for i, v in enumerate(versions)}
+
+
+def make_changes(versions: List[Version]) -> List[Change]:
+    """Returns a list of Change objects for the given list of `versions`."""
+    assert len(versions) > 1
+    return [Change(before=versions[i-1], after=versions[i])
+            for i in range(1, len(versions))]
+
+
+def make_counts(versions: List[Version], history: History
+           ) -> np.ndarray:
+    """The counts of successes, failures at each version of a history.
+
+    The return value is an np.array; the shape of the return value is:
+        [   [failures at version i],
+            [successes at version i]   ]
+    """
+    result = ([0] * len(history), [0] * len(history))
+    index_of = index_map(versions)
+    for version, success, _ in history:
+        result[1 if success else 0][index_of[version]] += 1
+    return np.array(result)
+
+
+def accumulated_from_left_counts(version_counts: np.ndarray) -> np.ndarray:
+    return np.cumsum(version_counts, axis=1)
+
+
+def accumulated_from_right_counts(version_counts: np.ndarray) -> np.ndarray:
+    return np.flip(np.cumsum(np.flip(version_counts, axis=1), axis=1), axis=1)
+
+
+# The traditional (frequentist / p-value oriented) statistics, used to
+# estimate before and after probabilities that will be used in hypothesis
+# formation.
+
+def per_change_contingency_tables(versions: List[Version], history: History
+                                  ) -> Dict[Change, np.ndarray]:
+    """Compute a contingency table for every change in a history.
+    
+    The return value is a dict from Change c to a contingency table like:
+        [   [Total failures before c,     Total failures after c ],
+            [Total successes before c,    Total successes after c]   ]
+    """
+    changes = make_changes(versions)
+    counts = make_counts(versions, history)
+    left_counts = accumulated_from_left_counts(counts)
+    right_counts = accumulated_from_right_counts(counts)
+    result = {}
+    for i, change in enumerate(changes):
+        contingency_table = np.array(
+            [[left_counts[0][i], right_counts[0][i + 1]],
+             [left_counts[1][i], right_counts[1][i + 1]]]
+        )
+        result[change] = contingency_table
+    return result
+
+
+def guess_before_and_after_probabilities(
+        versions: List[Version], history: History
+        ) -> Tuple[float, float]:
+    """Returns success probabilities before and after the change where those
+    probabilities are least plausibly the same.  This provides an estimate
+    of the true before and after probabilities that should converge to the
+    correct values with sufficient samples."""
+    index_of = index_map(versions)
+    counts = make_counts(versions, history)
+    contingency_tables = per_change_contingency_tables(versions, history)
+    p_values = {change: scipy.stats.fisher_exact(table)
+                for change, table in contingency_tables.items()}
+    lowest_p = min(p_values.values())
+    candidate_change = [change for change, value in p_values.items()
+                        if value == lowest_p][0]
+    before_fail, before_success = accumulated_from_left_counts(counts)[
+        index_of[candidate_change.before]]
+    after_fail, after_success = accumulated_from_right_counts(counts)[
+        index_of[candidate_change.after]]
+    return (before_success / (before_success + before_fail),
+            after_success / (after_success + after_fail))
+
+
+# The statistics used to find the most likely of the hypotheses.
+#
+# In brief, given a most likely before-and-after probabilitiy pair, we
+# consider one hypothesis for each `Change`, that that change is the boundary
+# between the before and after probability regions.  For each hypothesis θ we
+# compute the likelihood Lθ = L(θ|x) (probability of observation x under
+# hypothesis θ).  We use the likelihood ratio to invert this to L(x|θ), the
+# probability of hypothesis θ as opposed to other known hypotheses given
+# observation x.
+
+@dataclass(frozen=True, eq=True)
+class Hypothesis:
+    change: Change
+    before_probability: float
+    after_probability: float
+
+    @classmethod
+    def all_hypotheses(cls,
+                       versions: List[Version],
+                       history: History
+                       ) -> List[Hypothesis]:
+        before, after = guess_before_and_after_probabilities(versions, history)
+        return [cls(change=c,
+                    before_probability=before,
+                    after_probability=after)
+                for c in make_changes(versions)]
+
+    def likelihood(self, history: History) -> float:
+        """Returns Likelihood(Hypothesis | History) (a.k.a. "L(θ|x)")
+        
+        That is, returns the probability, assuming hypothesis `θ = self`, of
+        the outcome distribution of history
+        `x = per_change_contingency_tables(history)`.  (The summarization
+        of the history into a contingency table entails an assumption that
+        the underlying experiments are i.i.d.)
+        """
+        ...
 
 
 class HistorySummary:
