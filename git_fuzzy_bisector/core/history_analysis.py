@@ -12,6 +12,11 @@ TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost)
 History = List[TestResult]
 
 
+def pretty_history(history: History) -> str:
+    return ",".join([f"{version}{'+' if success else '-'}"
+                     for version, success, _ in history])
+
+
 @dataclass(frozen=True, eq=True)
 class Change:
     """Represents a change, i.e. a pair of consecutive versions.
@@ -366,19 +371,19 @@ def history_probabilities(
     params = HistorySummary(versions, history)
     changes = params.changes
     ps = [p_sides_differ(params, c) for c in changes]
-    if [p == 1.0 for p in ps]:
+
+    if all(p == 1.0 for p in ps):
         # If all p values are 1, then we have no information to distinguish
         # the versions; return a uniform distribution.
         return [(c, 1 / len(changes)) for c in changes]
 
-    # The above ps are "p-values" -- P(A==B|r).  For reasons described in
-    # other documents, an application of Bayes' theorem tells us that
-    # P(r|A!=B) is the normalization of the complement of these probabilities.
-    total_p_complements = sum((1 - p for p in ps))
-    version_probabilities = [1 - (p / total_p_complements) for p in ps]
+    # Rewrite these p values as likelihoods for each individual hypothesis.
+    unweighted_likelihoods = [(sum(ps) - p)/p if p > 0 else None for p in ps]
+    likelihoods = [
+        lk / sum(lk for lk in unweighted_likelihoods if lk is not None)
+        for lk in unweighted_likelihoods]
 
-    return [(changes[i], version_probabilities[i])
-            for i in range(len(changes))]
+    return [(changes[i], likelihoods[i]) for i in range(len(changes))]
 
 
 class Guess:
