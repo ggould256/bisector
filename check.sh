@@ -1,15 +1,9 @@
 #!/bin/bash
 
 set -e
-python3.12 -m venv .venv
-. .venv/bin/activate
-pip3 install -U pip
-pip3 install -r requirements.txt >/dev/null
-pip3 install -e .
-
-set -x
-python3 -m unittest git_fuzzy_bisector.core.test.history_probability_test
-python3 -m unittest git_fuzzy_bisector.core.test.search_test
-set +x
-
-deactivate
+rm -rf .test_venv
+python3.12 -m venv .test_venv
+.test_venv/bin/pip3 install -U pip
+.test_venv/bin/pip3 install -e .
+.test_venv/bin/ruff check .
+.test_venv/bin/py.test

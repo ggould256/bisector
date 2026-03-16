@@ -2,7 +2,9 @@
 **/__pycache__
 *.sublime-*
 
-.venv
+.*venv
 .vscode
 
 *.egg-info
+
+pylock.toml

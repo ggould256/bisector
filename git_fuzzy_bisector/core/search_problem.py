@@ -33,11 +33,11 @@ class SearchProblem(Generic[VersionType]):
     versions: List[VersionType]
     test_fn: Callable[[VersionType], bool]
     setup_fn: Callable[[VersionType], None]=(lambda _: None)
-    current_version: VersionType=None
-    known_initial_success_probability: float=None
-    known_final_success_probability: float=None
-    known_setup_cost: float=None
-    known_test_cost: float=None
+    current_version: VersionType | None = None
+    known_initial_success_probability: float | None = None
+    known_final_success_probability: float | None = None
+    known_setup_cost: float | None = None
+    known_test_cost: float | None = None
 
     def __post_init__(self):
         assert self.test_fn is not None
