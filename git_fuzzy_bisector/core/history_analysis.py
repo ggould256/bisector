@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import floor, sqrt
+from math import floor
+from typing import Dict, List, Tuple
+
 import numpy as np
 import scipy.stats
-from typing import Callable, Dict, Iterable, Generic, List, Tuple, TypeVar
 
 Version = str
 TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost)
@@ -14,7 +15,7 @@ History = List[TestResult]
 @dataclass(frozen=True, eq=True)
 class Change:
     """Represents a change, i.e. a pair of consecutive versions.
-    
+
     This class exists solely to prevent fencepost errors (there is one
     fewer changes than versions), but it also makes for a slightly clearer
     pretty-print of the changes in question."""
@@ -25,15 +26,18 @@ class Change:
         before = self.before
         after = self.after
         attempt = f"{before}->{after}"
-        if len(attempt) <= max_len: return attempt
+        if len(attempt) <= max_len:
+            return attempt
         trunc_len = floor((max_len - 4) / 2)
         if len(before) > len(after):
             before = before[:trunc_len] + "…"
         attempt = f"{before}->{after}"
-        if len(attempt) <= max_len: return attempt
+        if len(attempt) <= max_len:
+            return attempt
         after = after[:trunc_len] + "…"
         attempt = f"{before}->{after}"
-        if len(attempt) <= max_len: return attempt
+        if len(attempt) <= max_len:
+            return attempt
         before = before[:trunc_len] + "…"
         attempt = f"{before}->{after}"
         return attempt
@@ -86,7 +90,7 @@ def accumulated_from_right_counts(version_counts: np.ndarray) -> np.ndarray:
 def per_change_contingency_tables(versions: List[Version], history: History
                                   ) -> Dict[Change, np.ndarray]:
     """Compute a contingency table for every change in a history.
-    
+
     The return value is a dict from Change c to a contingency table like:
         [   [Total failures before c,     Total failures after c ],
             [Total successes before c,    Total successes after c]   ]
@@ -157,7 +161,7 @@ class Hypothesis:
 
     def likelihood(self, history: History) -> float:
         """Returns Likelihood(Hypothesis | History) (a.k.a. "L(θ|x)")
-        
+
         That is, returns the probability, assuming hypothesis `θ = self`, of
         the outcome distribution of history
         `x = per_change_contingency_tables(history)`.  (The summarization
@@ -253,7 +257,7 @@ class HistorySummary:
         LONGEST_FIRST_TITLE = 20  # "Succ. rate (before)"
         LONGEST_SECOND_TITLE = 8  # "(after) "
         first_graph_indent_num = LONGEST_FIRST_TITLE
-        version_graph_width = len(self.versions)
+        _version_graph_width = len(self.versions)
         change_graph_width = len(self.changes)
         change_graph_hangover = max(len(str(c)) for c in self.changes)
         second_graph_indent_num = (
@@ -270,11 +274,11 @@ class HistorySummary:
             new_line = ""
             new_line += f"{first_indent}{'|' * i}{str(rev)}"
             result += new_line + "\n"
-        successes_sparkline = spark(self.success_counts)
-        failures_sparkline = spark(self.failure_counts)
-        result += right_just_title("Successes: ", first_graph_indent_num) 
+        _successes_sparkline = spark(self.success_counts)
+        _failures_sparkline = spark(self.failure_counts)
+        result += right_just_title("Successes: ", first_graph_indent_num)
         result += spark(self.success_counts) + "\n"
-        result += right_just_title("Failures: ", first_graph_indent_num) 
+        result += right_just_title("Failures: ", first_graph_indent_num)
         result += spark(self.failure_counts) + "\n"
 
         result += "\n"
@@ -297,7 +301,7 @@ class HistorySummary:
             new_line += spark(first_data)
             new_line += right_just_title(
                 second_title, second_graph_indent_num - len(new_line))
-            new_line += spark(second_data) + "\n" 
+            new_line += spark(second_data) + "\n"
             return new_line
         result += two_graph_line("Successes (before) ", lss, "(after) ", rss)
         result += two_graph_line("Failures (before) ", lsf, "(after) ", rsf)

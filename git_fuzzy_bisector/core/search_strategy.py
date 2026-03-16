@@ -5,8 +5,9 @@ to prove the concept."""
 import math
 import time
 
-from git_fuzzy_bisector.core.search_problem import SearchProblem
 from git_fuzzy_bisector.core.history_analysis import Guess, HistorySummary
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+
 
 class StrategyRunner:
     """Actually runs a strategy on a search problem.  Its ctor acts as the
@@ -35,11 +36,13 @@ class StrategyRunner:
             if problem.current_version != next_version:
                 _, setup_cost = self.updated_cost(
                     problem.known_setup_cost, setup_cost, history,
-                    lambda: problem.setup_fn(next_version))
+                    lambda next_version=next_version:
+                        problem.setup_fn(next_version))
             problem.current_version = next_version
             result, test_cost = self.updated_cost(
                 problem.known_test_cost, test_cost, history,
-                lambda: problem.test_fn(next_version))
+                lambda next_version=next_version:
+                    problem.test_fn(next_version))
             history += [(next_version, result, test_cost)]
             guess = Guess(problem.versions, history)
             if print_monitor:
@@ -49,7 +52,8 @@ class StrategyRunner:
                       f"with probability {guess.guess_probability:.2f} "
                       f"after {iterations} iterations.")
                 print()
-            if guess.guess_probability > target_probability: break
+            if guess.guess_probability > target_probability:
+                break
         else:  # ran out of iterations; break condition not hit.
             print("Test iteration limit hit.")
             exit(1)
@@ -73,8 +77,8 @@ class StrategyRunner:
 
 class DefaultSearchStrategy:
     """Basic strategy that rotates through versions
-    
-    Extremely basic strategy that blindly tests each revision a few times 
+
+    Extremely basic strategy that blindly tests each revision a few times
     (setup_cost / test_cost many times) without regard for probabilities.
     Pretty much just meant to establish a baseline for testing."""
 
@@ -115,8 +119,6 @@ class BestChangeSearchStrategy:
             return (problem.current_version or
                     problem.versions[int(len(problem.versions) / 2)])
         versions = problem.versions
-        current_version_index = (None if not problem.current_version
-                                 else versions.index(problem.current_version))
         summary = HistorySummary(versions, history)
         # Heuristic:  Add one to both success and failure totals to give sane
         # results at low sample sizes.
@@ -136,6 +138,7 @@ class BestChangeSearchStrategy:
         rewards = [(baseline - prob_after_try(version)) ** 2
                    for version in versions]
         if problem.current_version:
+            current_version_index = versions.index(problem.current_version)
             status_quo_preference = ((1 + self._inertia)
                                      * (setup_cost + test_cost)
                                      / test_cost)

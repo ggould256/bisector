@@ -1,17 +1,22 @@
-from git_fuzzy_bisector.core.history_analysis import (
-    Change, Guess, HistorySummary, history_probabilities, p_sides_differ)
-
 import random
 import unittest
+
+from git_fuzzy_bisector.core.history_analysis import (
+    Change,
+    Guess,
+    HistorySummary,
+    history_probabilities,
+    p_sides_differ,
+)
 
 
 class TestParameterComputation(unittest.TestCase):
     def test_params(self):
         """Test computation of population parameters from history."""
         versions = ['a', 'b', 'c']
-        history = [('a', False, 1), ('a', False, 1),
-                   ('b', True, 1), ('b', False, 1),
-                   ('c', True, 1), ('c', True, 1), ]
+        history = [('a', False, 1.0), ('a', False, 1.0),
+                   ('b', True, 1.0), ('b', False, 1.0),
+                   ('c', True, 1.0), ('c', True, 1.0), ]
         params = HistorySummary(versions, history)
         self.assertEqual(params.versions, ["a", "b", "c"])
         self.assertEqual(params.success_counts, [0, 1, 2])
@@ -34,9 +39,9 @@ class TestParameterComputation(unittest.TestCase):
         """Sanity-check that I have something like the correct formula for
         p values."""
         versions = ['a', 'b', 'c']
-        history = [('a', False, 1), ('a', False, 1),
-                   ('b', True, 1), ('b', False, 1),
-                   ('c', True, 1), ('c', True, 1), ]
+        history = [('a', False, 1.0), ('a', False, 1.0),
+                   ('b', True, 1.0), ('b', False, 1.0),
+                   ('c', True, 1.0), ('c', True, 1.0), ]
         params = HistorySummary(versions, history)
 
         # Scenario is symmetric
@@ -56,9 +61,9 @@ class TestParameterComputation(unittest.TestCase):
         """Sanity-check that the p formula works as expected on compliant
         data."""
         versions = ['a', 'b', 'c']  # 'b' will be the right answer.
-        history = [('a', False, 1), ('b', False, 1), ('c', True, 1), ]
+        history = [('a', False, 1.0), ('b', False, 1.0), ('c', True, 1.0), ]
         ps = (1, 1)
-        for i in range(5):
+        for _ in range(5):
             params = HistorySummary(versions, history)
             new_ps = (p_sides_differ(params, Change('a', 'b')),
                       p_sides_differ(params, Change('b', 'c')))
@@ -69,9 +74,9 @@ class TestParameterComputation(unittest.TestCase):
     def test_probabilities(self):
         """Test that version probability computation works as expected."""
         versions = ['a', 'b', 'c']
-        history = [('a', False, 1), ('a', False, 1),
-                   ('b', True, 1), ('b', False, 1),
-                   ('c', True, 1), ('c', True, 1), ]
+        history = [('a', False, 1.0), ('a', False, 1.0),
+                   ('b', True, 1.0), ('b', False, 1.0),
+                   ('c', True, 1.0), ('c', True, 1.0), ]
         ab = Change("a", "b")
         bc = Change("b", "c")
         self.assertEqual(history_probabilities(versions, history),

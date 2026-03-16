@@ -1,7 +1,7 @@
+import unittest
+
 from git_fuzzy_bisector.core.search_problem import SearchProblem
 from git_fuzzy_bisector.core.search_strategy import StrategyRunner
-
-import unittest
 
 
 class TestSearch(unittest.TestCase):

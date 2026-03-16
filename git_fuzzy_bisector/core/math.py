@@ -2,6 +2,7 @@ from typing import List
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.stats import chi2
 
 """The basic math of the bisector."""
 
@@ -12,54 +13,54 @@ def estimate_parameters(inputs: List[int] | NDArray[np.int32],
     Estimate the parameters a, b, and c using Maximum Likelihood Estimation.
 
     Parameters:
-        x (list or numpy array): Positive integers representing the input values.
-        y (list or numpy array): Binary outcomes (0 or 1).
+        inputs (list or numpy array): Positive integers representing the input values.
+        results (list or numpy array): Binary outcomes (0 or 1).
 
     Returns:
         a_hat (float): Estimated parameter a.
         b_hat (float): Estimated parameter b.
         c_hat (int): Estimated parameter c.
     """
-    x = np.array(x, dtype=int)
-    y = np.array(y)
-    
+    x = np.array(inputs, dtype=int)
+    y = np.array(results, dtype=bool)
+
     assert len(x) == len(y), "Inputs x and y must have the same length"
     assert all(x > 0), "All x values must be positive"
     assert set(y).issubset({0, 1}), "All y values must be binary (0 or 1)"
-    
+
     max_log_likelihood = float('-inf')
     best_c = None
     best_a = None
     best_b = None
-    
+
     # Iterate over possible values of c
     for c in range(1, np.max(x) + 1):
         # Split data into two groups
         group1 = y[x < c]  # x_i < c
         group2 = y[x >= c]  # x_i >= c
-        
+
         # Compute a and b
         a = np.mean(group1) if len(group1) > 0 else 0.0
         b = np.mean(group2) if len(group2) > 0 else 0.0
-        
+
         # Ensure probabilities are in [0, 1]
         a = np.clip(a, 0, 1)
         b = np.clip(b, 0, 1)
-        
+
         # Compute log-likelihood
         log_likelihood = 0.0
         if len(group1) > 0:
             log_likelihood += np.sum(group1 * np.log(a + 1e-10) + (1 - group1) * np.log(1 - a + 1e-10))
         if len(group2) > 0:
             log_likelihood += np.sum(group2 * np.log(b + 1e-10) + (1 - group2) * np.log(1 - b + 1e-10))
-        
+
         # Update best parameters if log-likelihood is improved
         if log_likelihood > max_log_likelihood:
             max_log_likelihood = log_likelihood
             best_c = c
             best_a = a
             best_b = b
-    
+
     return best_a, best_b, best_c
 
 # Example usage
@@ -71,8 +72,6 @@ print(f"Estimated a: {a_hat}")
 print(f"Estimated b: {b_hat}")
 print(f"Estimated c: {c_hat}")
 
-
-from scipy.stats import chi2
 
 def likelihood_ratio_test(x, y, a_hat, b_hat, c_hat):
     """
@@ -90,28 +89,28 @@ def likelihood_ratio_test(x, y, a_hat, b_hat, c_hat):
     """
     x = np.array(x)
     y = np.array(y)
-    
+
     # Split data based on c_hat
     group1 = y[x < c_hat]  # x_i < c_hat
     group2 = y[x >= c_hat]  # x_i >= c_hat
-    
+
     # Compute log-likelihood under the unrestricted model (a, b)
     log_likelihood_alt = 0.0
     if len(group1) > 0:
         log_likelihood_alt += np.sum(group1 * np.log(a_hat + 1e-10) + (1 - group1) * np.log(1 - a_hat + 1e-10))
     if len(group2) > 0:
         log_likelihood_alt += np.sum(group2 * np.log(b_hat + 1e-10) + (1 - group2) * np.log(1 - b_hat + 1e-10))
-    
+
     # Compute log-likelihood under the null hypothesis (a = b)
     pooled_prob = np.mean(y)  # Combined probability under H0
     log_likelihood_null = np.sum(y * np.log(pooled_prob + 1e-10) + (1 - y) * np.log(1 - pooled_prob + 1e-10))
-    
+
     # Compute the likelihood ratio statistic
     lambda_stat = -2 * (log_likelihood_null - log_likelihood_alt)
-    
+
     # Compute the p-value using the chi-squared distribution
     p_value = 1 - chi2.cdf(lambda_stat, df=1)
-    
+
     return p_value
 
 # Example usage
@@ -134,21 +133,21 @@ def compute_likelihood(x, y, a_hat, b_hat, c_hat):
     """
     x = np.array(x)
     y = np.array(y)
-    
+
     # Split data based on c_hat
     group1 = y[x < c_hat]  # x_i < c_hat
     group2 = y[x >= c_hat]  # x_i >= c_hat
-    
+
     # Compute log-likelihood
     log_likelihood = 0.0
     if len(group1) > 0:
         log_likelihood += np.sum(group1 * np.log(a_hat + 1e-10) + (1 - group1) * np.log(1 - a_hat + 1e-10))
     if len(group2) > 0:
         log_likelihood += np.sum(group2 * np.log(b_hat + 1e-10) + (1 - group2) * np.log(1 - b_hat + 1e-10))
-    
+
     # Convert log-likelihood to likelihood
     likelihood = np.exp(log_likelihood)
-    
+
     return likelihood
 
 # Example usage

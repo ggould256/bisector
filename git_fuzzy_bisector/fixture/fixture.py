@@ -2,13 +2,13 @@
 """Mechanism to set up a git repository suitable for system tests of the bisector -- ie, with a
 known history of revisions with specific failure chances."""
 
-import os.path
 import os
-from typing import List
-import random
+import os.path
 import stat
 import subprocess
 import textwrap
+from typing import List
+
 
 def make_fixture(target_dir: str, revision_success_probabilities: List[float], quiet: bool) -> List[str]:
     """Given a directory location @p target_dir, create a git repository at that location which
