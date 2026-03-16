@@ -19,5 +19,5 @@ jobs:
         python-version: '3.x'
     - name: Test
       run: |
-        check.sh
-        run_system_tests.sh
+        ./check.sh
+        ./run_system_test.sh

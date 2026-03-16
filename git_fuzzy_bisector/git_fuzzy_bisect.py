@@ -18,8 +18,8 @@ import subprocess
 import sys
 from typing import List
 
-from core.search_problem import SearchProblem
-from core.search_strategy import StrategyRunner
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+from git_fuzzy_bisector.core.search_strategy import StrategyRunner
 
 # TODO(ggould) move git subprocess calls into call into git plumbing python
 # module.  Or don't -- it seems to be less than supported these days?

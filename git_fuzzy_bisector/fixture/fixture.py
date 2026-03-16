@@ -2,12 +2,13 @@
 """Mechanism to set up a git repository suitable for system tests of the bisector -- ie, with a
 known history of revisions with specific failure chances."""
 
+from logging import config
 import os
 import os.path
 import stat
 import subprocess
 import textwrap
-from typing import List
+from typing import Any, Dict, List
 
 
 def make_fixture(target_dir: str, revision_success_probabilities: List[float], quiet: bool) -> List[str]:
@@ -34,15 +35,22 @@ def _ensure_gone(target: str):
 
 def create_fixture_git_repo(target_dir: str, quiet:bool):
     """Create a git repo at @p target_dir to contain a test fixture."""
-    quiet_args = {"stdout": subprocess.DEVNULL} if quiet else {}
+    quiet_args: Dict[str, Any] = {"stdout": subprocess.DEVNULL} if quiet else {}
     subprocess.check_call(['mkdir', '-p', target_dir], **quiet_args)
     subprocess.check_call(['git', 'init'], cwd=target_dir, **quiet_args)
+    subprocess.check_call(
+        ['git', 'config', '--global', 'user.email', 'system_test@nowhere.none'],
+        cwd=target_dir, **quiet_args)
+    subprocess.check_call(
+        ['git', 'config', '--global', 'user.name', 'Sy Stemtest'],
+        cwd=target_dir, **quiet_args)
+
 
 def create_fixture_revision(target_dir: str, uid: int, probability: float, quiet: bool):
     """Given a git repo at @p target_dir, commit a new revision to that repo containing
     a fixture that succeeds with @p probability, is seeded with @p seed, and that stores
     its state indexed by the unique number @p uid."""
-    quiet_args = {"stdout": subprocess.DEVNULL} if quiet else {}
+    quiet_args: Dict[str, Any] = {"stdout": subprocess.DEVNULL} if quiet else {}
     subprocess.check_call(['git', 'clean', '-f'], cwd=target_dir, **quiet_args)
 
     gitignore_file = os.path.join(target_dir, ".gitignore")
@@ -109,4 +117,4 @@ if __name__ == '__main__':
         [options.final_prob] * (options.num_revs - options.before_revs))
     revisions = make_fixture(options.dirname, rev_probs, options.quiet)
     for r in revisions:
-        print(str(r, encoding="utf-8"))
+        print(str(r))
