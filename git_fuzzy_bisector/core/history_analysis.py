@@ -366,6 +366,10 @@ def history_probabilities(
     params = HistorySummary(versions, history)
     changes = params.changes
     ps = [p_sides_differ(params, c) for c in changes]
+    if [p == 1.0 for p in ps]:
+        # If all p values are 1, then we have no information to distinguish
+        # the versions; return a uniform distribution.
+        return [(c, 1 / len(changes)) for c in changes]
 
     # The above ps are "p-values" -- P(A==B|r).  For reasons described in
     # other documents, an application of Bayes' theorem tells us that
