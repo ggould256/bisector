@@ -1,3 +1,5 @@
+# Implementation notes
+
 Starting with p-value statistics is a trap here.  The symmetries of the
 problem require combination of p-values, and p-values cannot be combined
 without quantifying independence; to quantify independence of individual
