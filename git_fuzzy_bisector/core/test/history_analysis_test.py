@@ -114,6 +114,7 @@ class TestParameterComputation(unittest.TestCase):
                 break
         else:
             self.assertTrue(False, f"Failed to converge after {iterations} iterations")
+
         self.assertEqual(str(guess.best_change), 'f->g')
 
 

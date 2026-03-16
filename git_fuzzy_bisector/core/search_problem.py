@@ -3,7 +3,7 @@ from typing import Callable, Generic, List, TypeVar
 
 VersionType = TypeVar('VersionType')
 
-@dataclass()  # TODO(ggould) Set kw_only=True once python 3.10 is guaranteed.
+@dataclass(kw_only=True)
 class SearchProblem(Generic[VersionType]):
     """Create a SearchProblem that will search over @p versions looking for
     a change in the frequency with which @p test_fn passes.
