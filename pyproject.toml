@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git_fuzzy_bisect"
+version = "0.1.0"
+description = "Probabilistic bisector for git"
+authors = []
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.7"
+dependencies = [
+    numpy>=1.19.5
+    scipy>=1.6.0
+    sparklines
+]
+
+[project.scripts]
+git-fuzzy-bisect = "git_fuzzy_bisector/git-fuzzy-bisect"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 80
+target-version = "py37"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "C",      # flake8-comprehensions
+    "B",      # flake8-bugbear
+]
+ignore = [
+    "E501",   # line too long (handled by line-length)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports
+
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = [
+    "git_fuzzy_bisector/**/test",
+]

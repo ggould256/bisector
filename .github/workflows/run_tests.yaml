@@ -1,0 +1,23 @@
+# This is a basic workflow that is manually triggered
+
+name: Run tests
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.x'
+    - name: Test
+      run: |
+        check.sh
+        run_system_tests.sh
