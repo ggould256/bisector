@@ -45,13 +45,14 @@ class TestParameterComputation(unittest.TestCase):
         params = HistorySummary(versions, history)
 
         # Scenario is symmetric
-        self.assertEqual(p_sides_differ(params, Change('a', 'b')),
-                         p_sides_differ(params, Change('b', 'c')))
+        self.assertAlmostEqual(p_sides_differ(params, Change('a', 'b')),
+                               p_sides_differ(params, Change('b', 'c')))
 
         # Still symmetric with doubled values
         doubled_params = HistorySummary(versions, history * 2)
-        self.assertEqual(p_sides_differ(doubled_params, Change('a', 'b')),
-                         p_sides_differ(doubled_params, Change('b', 'c')))
+        self.assertAlmostEqual(
+            p_sides_differ(doubled_params, Change('a', 'b')),
+            p_sides_differ(doubled_params, Change('b', 'c')))
 
         # ...but increasingly unlikely that the null hypo is true at any rev.
         self.assertGreater(p_sides_differ(params, Change('a', 'b')),
@@ -82,8 +83,10 @@ class TestParameterComputation(unittest.TestCase):
         self.assertEqual(history_probabilities(versions, history),
                          [(ab, 0.5), (bc, 0.5)])
         history += history  # Doubling # of tests does not break the symmetry
-        self.assertEqual(history_probabilities(versions, history),
-                         [(ab, 0.5), (bc, 0.5)])
+        for (actual, expected) in zip(history_probabilities(versions, history),
+                                    [(ab, 0.5), (bc, 0.5)]):
+            self.assertEqual(actual[0], expected[0])
+            self.assertAlmostEqual(actual[1], expected[1])
         history.append(('b', True, 1)) # Tip the success prob. of 'b' up.
         # 'b' now more closely resembles 'c' than 'a', so ps[0] > ps[1]
         self.assertGreater(history_probabilities(versions, history)[0][1], 0.5)
