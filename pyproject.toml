@@ -12,13 +12,13 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.7"
 dependencies = [
-    numpy>=1.19.5
-    scipy>=1.6.0
-    sparklines
+    "numpy>=1.19.5",
+    "scipy>=1.6.0",
+    "sparklines",
 ]
 
 [project.scripts]
-git-fuzzy-bisect = "git_fuzzy_bisector/git-fuzzy-bisect"
+git-fuzzy-bisect = "git_fuzzy_bisector:git_fuzzy_bisect"
 
 [project.optional-dependencies]
 dev = [
