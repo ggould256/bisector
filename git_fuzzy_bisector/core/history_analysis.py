@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import floor, sqrt
+import numpy as np
 import scipy.stats
 from typing import Callable, Iterable, Generic, List, Tuple, TypeVar
 
@@ -183,49 +184,39 @@ class HistorySummary:
         result += two_graph_line("Succ. rate (before) ", lratio,
                                  "(after) ", rratio)
 
-        ps = [p_value(self, c) for c in self.changes]
+        ps = [p_sides_differ(self, c) for c in self.changes]
         probs = [1/p if p > 0 else None for p in ps]  # unweighted :-(
         result += "\n"
         result += two_graph_line("p-value: ", ps, "probs: ", probs)
         return result
 
 
-def p_value(history_parameters: HistorySummary,
-            change: Change
-        ) -> float:
-    """Compute the change p-value for a given change.
+def p_sides_differ(
+        history_params: HistorySummary,
+        change: Change
+    ) -> float:
+    """Compute the p value that the sides of a change differ.
 
     Compute a p-value against the hypothesis that the
     versions <= @p change.before and the versions >= change.after
     are from the same distribution.
 
+    NOTE:  In context, this is not a P-value as such:  The null hypothesis
+    is in fact always false _ex hypothesi_ within the definition of the
+    problem.  This must be corrected for via re-weighting later to ensure
+    that the complements of the P values sum to 1 (i.e. that there is exactly
+    one guilty revision) or, alternatively, that the P values sum to
+    num_changes - 1 (i.e. that there are N-1 revisions without a change).
+
     @Returns 1 if the history is inadequate to estimate.
     """
-    if history_parameters.count == 0:
-        return 1.
-    hypothesis_p = history_parameters.success_count / history_parameters.count
-    left_n = history_parameters.left_sum_counts[change]
-    left_successes = history_parameters.left_sum_successes[change]
-    right_n = history_parameters.right_sum_counts[change]
-    right_successes = history_parameters.right_sum_successes[change]
-    if left_n < 1 or right_n < 1:
-        return 1.
-
-    p_left = scipy.stats.binomtest(
-        left_successes, left_n, hypothesis_p,
-        alternative='two-sided').pvalue
-    p_right = scipy.stats.binomtest(
-        right_successes, right_n, hypothesis_p,
-        alternative='two-sided').pvalue
-    if p_left == 0 or p_right == 0:
-        return 0.
-
-    # Fisher's method assumes the p-values are independent, which is not true
-    # here (the common expectation value `hypothesis_p` is in common between
-    # the two arms).  As such this value is (slightly) unsound for small n.
-    _stat, pval = scipy.stats.combine_pvalues(pvalues=[p_left, p_right])
-    return pval
-
+    outcome_matrix = np.array(
+        [[history_params.left_sum_successes[change],
+          history_params.right_sum_successes[change]],
+         [history_params.left_sum_failures[change],
+          history_params.right_sum_failures[change]]])
+    result = scipy.stats.fisher_exact(outcome_matrix)
+    return result.pvalue  # type: ignore -- scipy type hints are incomplete.
 
 def history_probabilities(
         versions: List[Version],
@@ -238,15 +229,13 @@ def history_probabilities(
     """
     params = HistorySummary(versions, history)
     changes = params.changes
-    ps = [p_value(params, c) for c in changes]
+    ps = [p_sides_differ(params, c) for c in changes]
 
     # The above ps are "p-values" -- P(A==B|r).  For reasons described in
     # other documents, an application of Bayes' theorem tells us that
-    # P(r|A!=B) is simply the normalization of the complement of these
-    # probabilities.
-    weights = [1 / p for p in ps]
-    total_weight = sum(weights)
-    version_probabilities = [weight / total_weight for weight in weights]
+    # P(r|A!=B) is the normalization of the complement of these probabilities.
+    total_p_complements = sum((1 - p for p in ps))
+    version_probabilities = [1 - (p / total_p_complements) for p in ps]
 
     return [(changes[i], version_probabilities[i])
             for i in range(len(changes))]

@@ -14,39 +14,63 @@ not with an outright failing test but with a change in the frequency with
 which a test fails.  It is meant to solve both the "when did this test become
 flaky?" problem and the "has this always been this flaky?" problem.
 
-The statistical underpinnings of this are tedious but not complicated.
+The statistical underpinnings of this are tedious.
 
 ## Statistics
 
-Note:  The statistical argument below is extremely sketchy, and will not stand
-up to scrutiny.  It is conservative in practice.
+It is tempting to use a simple binonial test computing the p-value that
+results prior to a revision and those subsequent are drawn from the same
+distribution; this can then be normalized across all the revisions via
+Bayes' theorem to obtain a p-value for the choice of revision.
 
-There is a single variable of interest, the change in which the probability
-of success changed (the "guilty change", here G).
+That doesn't work, because the null hypothesis is wrong in _every_ revision,
+so the application of Bayes' theorem is unsound -- we cannot condition the
+probability on there being only one revision that falsifies the null
+hypothesis.
 
- * G designates a suspect change.
- * Ĝ designates our guess of the guilty change.
- * G* designates the true guilty change, unknown to us.
- * Pa* designates the probability of success of versions prior to G*.
- * Pb* designates the probability of success of versions subsequent to G*.
+For the sake of terminology, let's imagine we have versions `A..Z`, and
+the correct answer is that change `J->K` is the right one. 
 
-Given a set of success/failure observations about various versions, and a
-hypothesis of the suspect change Ĝ, we can compute a p value as to whether
-the observations falsify the hypothesis by summing the successes and failures
-prior to and subsequent to Ĝ and performing a binomial test (if the numbers
-were huge, we'd use Chi squared, but we expect them to be small so we can be
-exact).
+What we know:
+ * A:  There are two distributions, P_A_actual and P_Z_actual.
+ * B:  All version samples are drawn from one of these two distributions.
+ * C:  Versions fall into two contiguous segments divided by change JK_actual.
+ * D:  P_A_actual and P_Z_actual are different.
 
-We can compute this for every G.  The p values will not sum to 1 of course --
-each is conditional on Ĝ==G and so in that sense overconfident.  Using Bayes'
-Theorem we can invert the condition so that it's p(G|X) rather than p(X|G)
-if we knew a prior, but we don't have to:  p(G|X) must sum to 1
-_ex hypothesi_, because we assumed going in that G* exists.
+We're never going to know a P_actual, or even a prior distribution over a
+P_actual, which is why a Monte Carlo approach won't work.
 
-So we just normalize the sum to get p(G|X) for each G.
+So all we can ask about is the probability that things are from the same
+distribution.
 
-We iterate until some Ĝ==G|(p(G|X) < 0.05) or whatever threshold we choose.
+So:  What is the probability that J is from the same distribution as A
+through I?  Fisher's Exact Test is the obvious choice here.  Likewise that K
+is from the same distribution as L through Z.
 
+(There will be some empty sets invovled.  Fisher's Exact Test allows this.)
+
+For a given JK to be accepted, we compute three p values:
+ * J same distribution as AI  exact(J, AI);  correct JK must ACCEPT
+ * K same distribution as LZ  exact(K, LZ);  correct JK must ACCEPT
+ * AJ not equal to KZ         exact(AJ, KZ); correct JK must REJECT
+
+To accept JK, we must accept the first two hypotheses and reject the third.
+Combining accept and reject p values is not trivial, so we have some more
+work to do.
+
+For each JK, we combine (using Fisher's Method) the accept values.  We know
+that this combined value can be correctly accepted for only one value, and
+so we can normalize this statistic to sum to 1 over the whole list.  We call
+this statistic ACCEPT_CHANGE.
+
+We can make no such normalization assumption for the third value:  This
+hypothesis must actually be false for all JK.  Rather, the third value
+just gates whether we can accept that the analysis has enough statistical
+power to reach any conclusion at all.  We call this statistic
+REJECT_NULL.
+
+Our guess is G = maxidx(ACCEPT_CHANGE), and we guess it with confidence
+REJECT_NULL(G).
 
 ## Strategies
 

@@ -67,11 +67,6 @@ def _create_gitignore_file(target_path: str):
             /seed.*
             """))
 
-def _create_seed_file(target_path: str, seed: int):
-    _ensure_gone(target_path)
-    with open(target_path, "w") as f:
-        f.write("%d\n" % seed)
-
 def _create_run_script(target_path: str, uid: int, seed_file: str, probability: float):
     _ensure_gone(target_path)
     with open(target_path, "w") as f:
@@ -87,7 +82,9 @@ def _create_run_script(target_path: str, uid: int, seed_file: str, probability: 
                         rnd.setstate(pickle.load(f))
                 except FileNotFoundError:
                     rnd.seed({uid})
-                succeed = rnd.random() < {probability}
+                sample = rnd.random()
+                succeed = sample < {probability}
+                print("sample", sample, "vs", {probability}, ":", succeed)
                 with open("{seedfile}", "wb") as f:
                     pickle.dump(rnd.getstate(), f)
                 sys.exit(0 if succeed else 1)

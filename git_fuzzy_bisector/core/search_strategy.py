@@ -17,7 +17,10 @@ class StrategyRunner:
         factory arguments to instantiate the strategy."""
         self._strategy = BestChangeSearchStrategy()
 
-    def solve(self, problem: SearchProblem, print_monitor=False):
+    def solve(self,
+              problem: SearchProblem,
+              print_monitor: bool=False,
+              test_limit=None):
         history = []
         guess = Guess(problem.versions, history)
         target_probability = 0.9  # TODO parameterize this (in the problem?)
@@ -25,7 +28,7 @@ class StrategyRunner:
         test_cost = problem.known_test_cost
         assert (guess.guess_probability <= (1 / (len(problem.versions) - 1)))
         iterations = 0
-        while guess.guess_probability < target_probability:
+        while test_limit is None or iterations < test_limit:
             iterations += 1
             next_version = self._strategy.next_version(
                 history, problem, setup_cost, test_cost)
@@ -46,6 +49,10 @@ class StrategyRunner:
                       f"with probability {guess.guess_probability:.2f} "
                       f"after {iterations} iterations.")
                 print()
+            if guess.guess_probability > target_probability: break
+        else:  # ran out of iterations; break condition not hit.
+            print("Test iteration limit hit.")
+            exit(1)
         return guess
 
     @staticmethod
