@@ -18,8 +18,8 @@ import subprocess
 import sys
 from typing import List
 
-from core.search_problem import SearchProblem
-from core.search_strategy import StrategyRunner
+from git_fuzzy_bisector.core.search_problem import SearchProblem
+from git_fuzzy_bisector.core.search_strategy import StrategyRunner
 
 # TODO(ggould) move git subprocess calls into call into git plumbing python
 # module.  Or don't -- it seems to be less than supported these days?
@@ -53,7 +53,7 @@ def test_revision(rev: str, cmd: List[str]):
     return True
 
 
-def main(args: List[str]):
+def main(argv: List[str]=sys.argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "revisions", nargs="+",
@@ -78,7 +78,7 @@ def main(args: List[str]):
         help="Perform no more than N tests; exit with nonzero code if that "
              "wasn't enough to fully convict any particular change.")
 
-    options = parser.parse_args(args)
+    options = parser.parse_args(argv[1:])
     revisions = []
     if options.revisions:
         revisions += extract_all_revisions(options.revisions)
@@ -101,4 +101,4 @@ def main(args: List[str]):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv)
