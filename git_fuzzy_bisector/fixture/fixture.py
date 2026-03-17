@@ -2,7 +2,6 @@
 """Mechanism to set up a git repository suitable for system tests of the bisector -- ie, with a
 known history of revisions with specific failure chances."""
 
-from logging import config
 import os
 import os.path
 import stat
