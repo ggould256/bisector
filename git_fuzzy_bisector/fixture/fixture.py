@@ -65,7 +65,7 @@ def create_fixture_revision(target_dir: str, uid: int, probability: float, quiet
     revision = subprocess.check_output(['git', 'log', "--pretty=%H", '--max-count=1'], cwd=target_dir).rstrip()
     if not quiet:
         print("Created revision %d, hash %s, with probability %f" % (uid, revision, probability))
-    return revision
+    return revision.decode("utf-8")
 
 def _create_gitignore_file(target_path: str):
     _ensure_gone(target_path)
@@ -116,4 +116,4 @@ if __name__ == '__main__':
         [options.final_prob] * (options.num_revs - options.before_revs))
     revisions = make_fixture(options.dirname, rev_probs, options.quiet)
     for r in revisions:
-        print(str(r))
+        print(r)
