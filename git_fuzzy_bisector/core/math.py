@@ -4,17 +4,33 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import chi2
 
-"""The basic math of the bisector."""
+"""A basic mathematical model for the bisector.
+
+The math models a probability distribution function
+
+```
+p(x | a, b, c)) = { a : x < c ;   b : x >= c }
+```
+
+a and b are probabilities of success, and c is a change point.  The bisector
+logic is only valid if this assumption holds true.
+
+This library provides maximum-likelihood estimation of a, b, and c -- that is,
+it selects c that maximizes the likelihood of the data given (a, b, c), then
+provides the best estimated a and b for that c.
+"""
 
 
-def estimate_parameters(inputs: List[int] | NDArray[np.int32],
-                        results: List[bool] | NDArray[np.bool_]):
+def estimate_parameters(
+        inputs: List[int] | NDArray[np.int32],
+        results: List[bool] | NDArray[np.bool_]
+    ) -> tuple[float, float, int]:
     """
     Estimate the parameters a, b, and c using Maximum Likelihood Estimation.
 
     Parameters:
-        inputs (list or numpy array): Positive integers representing the input values.
-        results (list or numpy array): Binary outcomes (0 or 1).
+        inputs (list or numpy array): Positive integers representing the x of tests performed.
+        results (list or numpy array): Binary outcomes (0 or 1) representing the results of the tests.
 
     Returns:
         a_hat (float): Estimated parameter a.
@@ -29,9 +45,9 @@ def estimate_parameters(inputs: List[int] | NDArray[np.int32],
     assert set(y).issubset({0, 1}), "All y values must be binary (0 or 1)"
 
     max_log_likelihood = float('-inf')
-    best_c = None
-    best_a = None
-    best_b = None
+    best_a = 0.0
+    best_b = 0.0
+    best_c = 0
 
     # Iterate over possible values of c
     for c in range(1, np.max(x) + 1):
@@ -62,15 +78,6 @@ def estimate_parameters(inputs: List[int] | NDArray[np.int32],
             best_b = b
 
     return best_a, best_b, best_c
-
-# Example usage
-x_samples = [1, 2, 3, 4, 5, 6, 7]
-y_samples = [0, 1, 0, 1, 1, 0, 1]
-
-a_hat, b_hat, c_hat = estimate_parameters(x_samples, y_samples)
-print(f"Estimated a: {a_hat}")
-print(f"Estimated b: {b_hat}")
-print(f"Estimated c: {c_hat}")
 
 
 def likelihood_ratio_test(x, y, a_hat, b_hat, c_hat):
@@ -113,9 +120,6 @@ def likelihood_ratio_test(x, y, a_hat, b_hat, c_hat):
 
     return p_value
 
-# Example usage
-p_val = likelihood_ratio_test(x_samples, y_samples, a_hat, b_hat, c_hat)
-print(f"P-value for the null hypothesis (a = b): {p_val}")
 
 def compute_likelihood(x, y, a_hat, b_hat, c_hat):
     """
@@ -149,7 +153,3 @@ def compute_likelihood(x, y, a_hat, b_hat, c_hat):
     likelihood = np.exp(log_likelihood)
 
     return likelihood
-
-# Example usage
-likelihood = compute_likelihood(x_samples, y_samples, a_hat, b_hat, c_hat)
-print(f"Likelihood for the chosen c: {likelihood}")

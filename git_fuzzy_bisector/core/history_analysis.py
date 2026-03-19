@@ -378,9 +378,10 @@ def history_probabilities(
         return [(c, 1 / len(changes)) for c in changes]
 
     # Rewrite these p values as likelihoods for each individual hypothesis.
-    unweighted_likelihoods = [(sum(ps) - p)/p if p > 0 else None for p in ps]
+    unweighted_likelihoods: List[float] = [
+        (sum(ps) - p)/p for p in ps if p > 0]
     likelihoods = [
-        lk / sum(lk for lk in unweighted_likelihoods if lk is not None)
+        lk / sum(lk for lk in unweighted_likelihoods)
         for lk in unweighted_likelihoods]
 
     return [(changes[i], likelihoods[i]) for i in range(len(changes))]
