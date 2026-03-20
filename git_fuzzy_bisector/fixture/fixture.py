@@ -38,10 +38,10 @@ def create_fixture_git_repo(target_dir: str, quiet:bool):
     subprocess.check_call(['mkdir', '-p', target_dir], **quiet_args)
     subprocess.check_call(['git', 'init'], cwd=target_dir, **quiet_args)
     subprocess.check_call(
-        ['git', 'config', '--global', 'user.email', 'system_test@nowhere.none'],
+        ['git', 'config', '--local', 'user.email', 'system_test@nowhere.none'],
         cwd=target_dir, **quiet_args)
     subprocess.check_call(
-        ['git', 'config', '--global', 'user.name', 'Sy Stemtest'],
+        ['git', 'config', '--local', 'user.name', 'Sy Stemtest'],
         cwd=target_dir, **quiet_args)
 
 
@@ -58,7 +58,7 @@ def create_fixture_revision(target_dir: str, uid: int, probability: float, quiet
 
     seed_file = os.path.join(target_dir, "seed.%d" % uid)
     run_script = os.path.join(target_dir, "run.py")
-    _create_run_script(run_script, uid, seed_file, probability)
+    _create_run_script(run_script, uid, seed_file, probability, quiet)
     subprocess.check_call(['git', 'add', run_script], cwd=target_dir, **quiet_args)
 
     subprocess.check_call(['git', 'commit', '-m', "revision id %d" % uid], cwd=target_dir, **quiet_args)
@@ -74,10 +74,11 @@ def _create_gitignore_file(target_path: str):
             /seed.*
             """))
 
-def _create_run_script(target_path: str, uid: int, seed_file: str, probability: float):
+def _create_run_script(
+        target_path: str, uid: int, seed_file: str, probability: float, quiet: bool):
     _ensure_gone(target_path)
     with open(target_path, "w") as f:
-        f.write(textwrap.dedent("""\
+        f.write(textwrap.dedent(f"""\
             #!/usr/bin/env python3
             import pickle
             import random
@@ -85,17 +86,18 @@ def _create_run_script(target_path: str, uid: int, seed_file: str, probability: 
             rnd = random.Random()
             if __name__ == "__main__":
                 try:
-                    with open("{seedfile}", "rb") as f:
+                    with open("{seed_file}", "rb") as f:
                         rnd.setstate(pickle.load(f))
                 except FileNotFoundError:
                     rnd.seed({uid})
                 sample = rnd.random()
                 succeed = sample < {probability}
-                print("sample", sample, "vs", {probability}, ":", succeed)
-                with open("{seedfile}", "wb") as f:
+                if not {quiet}:
+                    print("sample", sample, "vs", {probability}, ":", succeed)
+                with open("{seed_file}", "wb") as f:
                     pickle.dump(rnd.getstate(), f)
                 sys.exit(0 if succeed else 1)
-            """.format(seedfile=seed_file, uid=uid, probability=probability)))
+            """))
     os.chmod(target_path, stat.S_IRWXU)
 
 

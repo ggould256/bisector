@@ -139,10 +139,9 @@ class BestChangeSearchStrategy:
                    for version in versions]
         if problem.current_version:
             current_version_index = versions.index(problem.current_version)
-            status_quo_preference = ((1 + self._inertia)
-                                     * (setup_cost + test_cost)
-                                     / test_cost)
-            print(f"Status quo preference: {status_quo_preference}")
+            status_quo_preference = (
+                 ((1 + self._inertia) * setup_cost + test_cost)
+                 / test_cost)
             rewards[current_version_index] *= status_quo_preference
         best_version_index = max(enumerate(rewards), key=lambda x: x[1])[0]
         return versions[best_version_index]
