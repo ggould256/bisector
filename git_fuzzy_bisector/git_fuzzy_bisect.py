@@ -39,7 +39,11 @@ def extract_all_revisions(revision_strings: List[str]):
 
 def setup_revision(rev: str, cmd: str):
     print("Checking out revision " + rev)
-    subprocess.check_output(["git", "checkout", rev])
+    subprocess.check_output(
+        ["git",
+         "-c", "advice.detachedHead=false",
+         "checkout", rev
+         ])
     if cmd:
         print("Executing setup command " + cmd)
         subprocess.check_call(cmd)
@@ -94,6 +98,7 @@ def main(argv: List[str]=sys.argv):
         setup_fn=(lambda rev: setup_revision(rev, options.setup_cmd)),
         test_fn=(lambda rev: test_revision(rev, options.test_cmd)),
         current_version=current_revision)
+    sys.stdout.flush()  # For easier user readability of our output.
     StrategyRunner().solve(
         problem=problem,
         print_monitor=(not options.quiet),

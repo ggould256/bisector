@@ -7,6 +7,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 import scipy.stats
 
+from git_fuzzy_bisector.core.math import (
+    compute_likelihood,
+    estimate_parameters,
+)
+
 Version = str
 TestResult = Tuple[Version, bool, float]  # (version, success/failure, cost)
 History = List[TestResult]
@@ -15,6 +20,17 @@ History = List[TestResult]
 def pretty_history(history: History) -> str:
     return ",".join([f"{version}{'+' if success else '-'}"
                      for version, success, _ in history])
+
+
+def history_as_lists(versions: List[Version], history: History) -> Tuple[List[int], List[bool]]:
+    """For analysis purposes, we typically want (int, bool) coordinates.
+    This function converts a history into that format, returning a tuple of
+    (version_id, success) lists (where version_id is the index of the version
+    in the versions list).
+    """
+    version_ids = [index_map(versions)[version] for version, _, _ in history]
+    outcomes = [success for _, success, _ in history]
+    return version_ids, outcomes
 
 
 @dataclass(frozen=True, eq=True)
@@ -114,39 +130,6 @@ def per_change_contingency_tables(versions: List[Version], history: History
     return result
 
 
-def guess_before_and_after_probabilities(
-        versions: List[Version], history: History
-        ) -> Tuple[float, float]:
-    """Returns success probabilities before and after the change where those
-    probabilities are least plausibly the same.  This provides an estimate
-    of the true before and after probabilities that should converge to the
-    correct values with sufficient samples."""
-    index_of = index_map(versions)
-    counts = make_counts(versions, history)
-    contingency_tables = per_change_contingency_tables(versions, history)
-    p_values = {change: scipy.stats.fisher_exact(table)
-                for change, table in contingency_tables.items()}
-    lowest_p = min(p_values.values())
-    candidate_change = [change for change, value in p_values.items()
-                        if value == lowest_p][0]
-    before_fail, before_success = accumulated_from_left_counts(counts)[
-        index_of[candidate_change.before]]
-    after_fail, after_success = accumulated_from_right_counts(counts)[
-        index_of[candidate_change.after]]
-    return (before_success / (before_success + before_fail),
-            after_success / (after_success + after_fail))
-
-
-# The statistics used to find the most likely of the hypotheses.
-#
-# In brief, given a most likely before-and-after probabilitiy pair, we
-# consider one hypothesis for each `Change`, that that change is the boundary
-# between the before and after probability regions.  For each hypothesis θ we
-# compute the likelihood Lθ = L(θ|x) (probability of observation x under
-# hypothesis θ).  We use the likelihood ratio to invert this to L(x|θ), the
-# probability of hypothesis θ as opposed to other known hypotheses given
-# observation x.
-
 @dataclass(frozen=True, eq=True)
 class Hypothesis:
     change: Change
@@ -158,13 +141,18 @@ class Hypothesis:
                        versions: List[Version],
                        history: History
                        ) -> List[Hypothesis]:
-        before, after = guess_before_and_after_probabilities(versions, history)
+        before, after, changed_index = estimate_parameters(
+            *history_as_lists(versions, history)
+        )
         return [cls(change=c,
                     before_probability=before,
                     after_probability=after)
                 for c in make_changes(versions)]
 
-    def likelihood(self, history: History) -> float:
+    def likelihood(self,
+                   versions: List[Version],
+                   history: History
+        ) -> float:
         """Returns Likelihood(Hypothesis | History) (a.k.a. "L(θ|x)")
 
         That is, returns the probability, assuming hypothesis `θ = self`, of
@@ -173,7 +161,10 @@ class Hypothesis:
         of the history into a contingency table entails an assumption that
         the underlying experiments are i.i.d.)
         """
-        ...
+        return compute_likelihood(*history_as_lists(versions, history),
+                                  self.before_probability,
+                                  self.after_probability,
+                                  index_map(versions)[self.change.after])
 
 
 class HistorySummary:
